@@ -16,6 +16,7 @@
         "*://*.youtube.com/*",
         "*://youtube.com/*"
       ],
+      "css": ["content.css"],
       "js": ["content.js"],
       "run_at": "document_idle"
     }
