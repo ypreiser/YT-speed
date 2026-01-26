@@ -16,11 +16,10 @@ A lightweight Firefox extension for controlling YouTube video playback speed. Wo
 
 ### Firefox Desktop (Temporary - for development)
 
-1. Open Firefox and navigate to `about:debugging`
-2. Click "This Firefox" in the sidebar
-3. Click "Load Temporary Add-on..."
-4. Navigate to this folder and select `manifest.json`
-5. The extension is now loaded! Visit YouTube to use it.
+1. Open Firefox and navigate to `about:debugging#/runtime/this-firefox`
+2. Click "Load Temporary Add-on..."
+3. Navigate to this folder and select `manifest.json`
+4. The extension is now loaded! Visit YouTube to use it.
 
 ### Firefox Desktop (Permanent)
 
@@ -53,6 +52,7 @@ A lightweight Firefox extension for controlling YouTube video playback speed. Wo
 ### Popup Settings (Desktop Only)
 
 Click the extension icon in toolbar to:
+
 - View current default speed
 - Set a new default speed
 - Use preset buttons for quick changes
@@ -102,15 +102,18 @@ YT-speed/
 ## Troubleshooting
 
 **UI not appearing?**
+
 - Refresh the YouTube page
 - Check that the extension is enabled
 - Try disabling other YouTube extensions that might conflict
 
 **Speed keeps resetting?**
+
 - The extension monitors and re-applies your speed
 - Some YouTube updates may temporarily reset speed
 
 **Audio issues at high speeds?**
+
 - This is a browser limitation, not the extension
 - Try reducing speed if audio cuts out
 
