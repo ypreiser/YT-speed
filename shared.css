@@ -15,8 +15,9 @@
   --yt-success: #22c55e;
 }
 
-/* Base reset */
-* {
+/* Base reset - scoped to extension only */
+#yt-speed-control,
+#yt-speed-control * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
