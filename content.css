@@ -1,8 +1,8 @@
 /* Content script specific - floating control */
 #yt-speed-control {
   position: fixed;
-  top: 8px;
-  left: 170px;
+  top: 80px;
+  left: 8px;
   z-index: 999999;
   font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-user-select: none;
@@ -22,7 +22,7 @@
   font-size: 12px;
   font-weight: 600;
   letter-spacing: -0.01em;
-  cursor: pointer;
+  cursor: grab;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
   display: flex;
   align-items: center;
@@ -38,7 +38,7 @@
 }
 
 #yt-speed-toggle:active {
-  transform: scale(0.96);
+  cursor: grabbing;
 }
 
 #yt-speed-panel {

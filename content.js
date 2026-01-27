@@ -18,6 +18,9 @@
   let defaultSpeed = DEFAULT_SPEED;
   let uiVisible = false;
   let playerControlInjected = false;
+  let isDragging = false;
+  let dragOffset = { x: 0, y: 0 };
+  let didDrag = false;
 
   // ============ Storage ============
 
@@ -138,6 +141,8 @@
 
     document.body.appendChild(container);
     attachUIEventListeners(container);
+    loadPosition(container);
+    attachDragListeners(container);
   }
 
   function attachUIEventListeners(container) {
@@ -149,8 +154,12 @@
     const resetBtn = document.getElementById("yt-speed-reset");
     const rangeInput = document.getElementById("yt-speed-range");
 
-    // Toggle panel
+    // Toggle panel (skip if just dragged)
     toggle.addEventListener("click", () => {
+      if (didDrag) {
+        didDrag = false;
+        return;
+      }
       uiVisible = !uiVisible;
       panel.classList.toggle("visible", uiVisible);
     });
@@ -217,6 +226,71 @@
         panel.classList.remove("visible");
       }
     });
+  }
+
+  // ============ Drag & Position ============
+
+  function attachDragListeners(container) {
+    const toggle = document.getElementById("yt-speed-toggle");
+
+    toggle.addEventListener("mousedown", (e) => {
+      if (e.button !== 0) return;
+      isDragging = true;
+      didDrag = false;
+      dragOffset.x = e.clientX - container.offsetLeft;
+      dragOffset.y = e.clientY - container.offsetTop;
+      e.preventDefault();
+    });
+
+    document.addEventListener("mousemove", (e) => {
+      if (!isDragging) return;
+      didDrag = true;
+      let x = e.clientX - dragOffset.x;
+      let y = e.clientY - dragOffset.y;
+      // Bounds check
+      x = Math.max(0, Math.min(x, window.innerWidth - container.offsetWidth));
+      y = Math.max(0, Math.min(y, window.innerHeight - container.offsetHeight));
+      container.style.left = x + "px";
+      container.style.top = y + "px";
+    });
+
+    document.addEventListener("mouseup", () => {
+      if (isDragging) {
+        isDragging = false;
+        if (didDrag) savePosition(container);
+      }
+    });
+
+    window.addEventListener("resize", () => {
+      // Snap back if off-screen
+      const rect = container.getBoundingClientRect();
+      if (rect.right > window.innerWidth || rect.bottom > window.innerHeight || rect.left < 0 || rect.top < 0) {
+        const safeX = Math.max(0, Math.min(rect.left, window.innerWidth - container.offsetWidth));
+        const safeY = Math.max(0, Math.min(rect.top, window.innerHeight - container.offsetHeight));
+        container.style.left = safeX + "px";
+        container.style.top = safeY + "px";
+        savePosition(container);
+      }
+    });
+  }
+
+  function savePosition(container) {
+    const rect = container.getBoundingClientRect();
+    browser.storage.local.set({ panelPosition: { x: rect.left, y: rect.top } })
+      .catch((err) => console.log("YT Speed: Could not save position", err));
+  }
+
+  function loadPosition(container) {
+    browser.storage.local.get(["panelPosition"]).then((result) => {
+      if (result.panelPosition) {
+        const { x, y } = result.panelPosition;
+        // Bounds check on load
+        const safeX = Math.max(0, Math.min(x, window.innerWidth - 50));
+        const safeY = Math.max(0, Math.min(y, window.innerHeight - 50));
+        container.style.left = safeX + "px";
+        container.style.top = safeY + "px";
+      }
+    }).catch((err) => console.log("YT Speed: Could not load position", err));
   }
 
   // ============ Player Control Button ============
