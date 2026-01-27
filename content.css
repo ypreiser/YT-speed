@@ -64,42 +64,10 @@
   animation: yt-speed-panel-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Panel header */
-.yt-speed-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+/* Panel header overrides */
+#yt-speed-panel .yt-speed-header {
   margin-bottom: 20px;
   padding-bottom: 16px;
-  border-bottom: 1px solid var(--yt-border);
-}
-
-.yt-speed-header span {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--yt-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.yt-speed-close {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--yt-bg-secondary);
-  border: 1px solid var(--yt-border);
-  border-radius: 8px;
-  font-size: 16px;
-  cursor: pointer;
-  color: var(--yt-text-secondary);
-  transition: all 0.15s ease;
-}
-
-.yt-speed-close:hover {
-  background: var(--yt-bg-hover);
-  color: var(--yt-text-primary);
 }
 
 /* Display container */
