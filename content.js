@@ -2,9 +2,9 @@
 (function () {
   "use strict";
 
-  // Configuration
+  // Configuration - no 1x in presets (use reset btn)
   const SPEED_PRESETS = [
-    0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3, 4,
+    0.25, 0.5, 0.75, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3, 4,
   ];
   const MIN_SPEED = 0.25;
   const MAX_SPEED = 16;
@@ -33,6 +33,7 @@
   }
 
   function saveDefaultSpeed(speed) {
+    defaultSpeed = speed;
     browser.storage.local
       .set({ defaultSpeed: speed })
       .catch((err) => console.log("YT Speed: Could not save settings", err));
@@ -76,7 +77,7 @@
     if (elements.saveBtn)
       elements.saveBtn.textContent = `Save ${currentSpeed}x as Default`;
     if (elements.infoText)
-      elements.infoText.textContent = `Default: ${defaultSpeed}x`;
+      elements.infoText.textContent = `Current Default Speed: ${defaultSpeed}x`;
     if (elements.playerText)
       elements.playerText.textContent = `${currentSpeed}x`;
 
@@ -101,12 +102,12 @@
       <button id="yt-speed-toggle">${currentSpeed}x</button>
       <div id="yt-speed-panel">
         <div class="yt-speed-header">
-          <span>Playback Speed</span>
+          <span>PLAYBACK SPEED</span>
           <button class="yt-speed-close">×</button>
         </div>
         <div class="yt-speed-display-container">
           <div class="yt-speed-current" id="yt-speed-display">${currentSpeed}x</div>
-          <div class="yt-speed-label">Current Speed</div>
+          <div class="yt-speed-label">CURRENT SPEED</div>
         </div>
         <div class="yt-speed-slider">
           <input type="range" id="yt-speed-range" min="${MIN_SPEED}" max="${MAX_SPEED}" step="0.05" value="${currentSpeed}">
@@ -119,13 +120,14 @@
           ).join("")}
         </div>
         <div class="yt-speed-custom">
-          <label>Custom Speed (${MIN_SPEED}x – ${MAX_SPEED}x) – Press Enter</label>
-          <input type="number" id="yt-speed-custom" min="${MIN_SPEED}" max="${MAX_SPEED}" step="0.1" value="${currentSpeed}">
+          <label>CUSTOM SPEED (${MIN_SPEED}x – ${MAX_SPEED}x)</label>
+          <input type="number" id="yt-speed-custom" min="${MIN_SPEED}" max="${MAX_SPEED}" step="0.05" value="${currentSpeed}">
         </div>
-        <div class="yt-speed-default">
-          <button id="yt-speed-save-default">Save ${currentSpeed}x as Default</button>
+        <div class="yt-speed-actions">
+          <button class="yt-speed-action" id="yt-speed-save-default">Save ${currentSpeed}x as Default</button>
+          <button class="yt-speed-action yt-speed-reset" id="yt-speed-reset">Reset to 1x</button>
         </div>
-        <div class="yt-speed-info">Default: ${defaultSpeed}x</div>
+        <div class="yt-speed-info">Current Default Speed: ${defaultSpeed}x</div>
       </div>
     `;
 
@@ -139,6 +141,7 @@
     const closeBtn = document.querySelector(".yt-speed-close");
     const customInput = document.getElementById("yt-speed-custom");
     const saveDefault = document.getElementById("yt-speed-save-default");
+    const resetBtn = document.getElementById("yt-speed-reset");
     const rangeInput = document.getElementById("yt-speed-range");
 
     // Toggle panel
@@ -166,18 +169,24 @@
       setSpeed(parseFloat(e.target.value)),
     );
 
-    // Custom speed (Enter key)
+    // Custom speed - sync on input
+    customInput.addEventListener("input", () => {
+      const speed = parseFloat(customInput.value);
+      if (!isNaN(speed) && speed >= MIN_SPEED && speed <= MAX_SPEED) {
+        setSpeed(speed);
+      }
+    });
+
+    // Custom speed (Enter key to save as default)
     customInput.addEventListener("keypress", (e) => {
       if (e.key === "Enter") {
-        const speed = parseFloat(customInput.value);
-        if (!isNaN(speed)) setSpeed(speed);
+        saveDefault.click();
       }
     });
 
     // Save as default
     saveDefault.addEventListener("click", () => {
-      defaultSpeed = currentSpeed;
-      saveDefaultSpeed(defaultSpeed);
+      saveDefaultSpeed(currentSpeed);
       updateSpeedDisplay();
       saveDefault.textContent = "Saved!";
       saveDefault.classList.add("saved");
@@ -187,6 +196,13 @@
         saveDefault.textContent = `Save ${currentSpeed}x as Default`;
         saveDefault.classList.remove("saved");
       }, 800);
+    });
+
+    // Reset button
+    resetBtn.addEventListener("click", () => {
+      setSpeed(DEFAULT_SPEED);
+      saveDefaultSpeed(DEFAULT_SPEED);
+      updateSpeedDisplay();
     });
 
     // Close panel when clicking outside
@@ -298,6 +314,16 @@
       true,
     );
   }
+
+  // ============ Message Listener ============
+
+  browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'setSpeed' && typeof message.speed === 'number') {
+      setSpeed(message.speed);
+    } else if (message.action === 'getSpeed') {
+      sendResponse({ currentSpeed, defaultSpeed });
+    }
+  });
 
   // ============ Initialization ============
 

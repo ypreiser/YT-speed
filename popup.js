@@ -6,72 +6,128 @@
   const MAX_SPEED = 16;
   const DEFAULT_SPEED = 1;
 
-  let currentDefaultSpeed = DEFAULT_SPEED;
+  let currentSpeed = DEFAULT_SPEED;
+  let defaultSpeed = DEFAULT_SPEED;
 
   // DOM Elements
   const currentSpeedDisplay = document.getElementById('current-speed');
+  const speedSlider = document.getElementById('speed-slider');
   const speedInput = document.getElementById('speed-input');
   const saveBtn = document.getElementById('save-btn');
   const resetBtn = document.getElementById('reset-btn');
-  const statusEl = document.getElementById('status');
-  const presetBtns = document.querySelectorAll('.preset-btn');
+  const closeBtn = document.getElementById('close-btn');
+  const defaultInfo = document.getElementById('default-info');
+  const presetBtns = document.querySelectorAll('.yt-speed-preset');
 
-  // Load saved settings
-  function loadSettings() {
-    browser.storage.local.get(['defaultSpeed']).then((result) => {
-      if (result.defaultSpeed) {
-        currentDefaultSpeed = result.defaultSpeed;
-        updateDisplay();
+  // Send message to content script
+  function sendSpeedToTab(speed) {
+    browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
+      if (tabs[0]?.id) {
+        browser.tabs.sendMessage(tabs[0].id, { action: 'setSpeed', speed }).catch(() => {
+          // Tab might not have content script (not YouTube)
+        });
       }
-    }).catch((err) => {
-      console.error('Failed to load settings:', err);
     });
   }
 
-  // Save settings
-  function saveSpeed(speed) {
+  // Load settings - first try content script, fallback to storage
+  function loadSettings() {
+    // Try to get current speed from active tab's content script
+    browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
+      if (tabs[0]?.id) {
+        browser.tabs.sendMessage(tabs[0].id, { action: 'getSpeed' }).then((response) => {
+          if (response) {
+            currentSpeed = response.currentSpeed;
+            defaultSpeed = response.defaultSpeed;
+            updateDisplay();
+          }
+        }).catch(() => {
+          // Not on YouTube, load from storage
+          loadFromStorage();
+        });
+      } else {
+        loadFromStorage();
+      }
+    }).catch(() => {
+      loadFromStorage();
+    });
+  }
+
+  // Fallback to storage
+  function loadFromStorage() {
+    browser.storage.local.get(['defaultSpeed']).then((result) => {
+      if (result.defaultSpeed) {
+        defaultSpeed = result.defaultSpeed;
+        currentSpeed = defaultSpeed;
+      }
+      updateDisplay();
+    }).catch((err) => {
+      console.error('Failed to load settings:', err);
+      updateDisplay();
+    });
+  }
+
+  // Save default speed
+  function saveDefault(speed) {
     speed = Math.max(MIN_SPEED, Math.min(MAX_SPEED, speed));
     speed = Math.round(speed * 100) / 100;
 
     browser.storage.local.set({ defaultSpeed: speed }).then(() => {
-      currentDefaultSpeed = speed;
+      defaultSpeed = speed;
       updateDisplay();
-      showStatus('Default speed saved!', 'success');
+      // Show saved feedback
+      saveBtn.textContent = 'Saved!';
+      saveBtn.classList.add('saved');
+      setTimeout(() => {
+        saveBtn.classList.remove('saved');
+        updateDisplay();
+      }, 800);
     }).catch((err) => {
       console.error('Failed to save settings:', err);
-      showStatus('Failed to save settings', 'error');
     });
   }
 
-  // Update display
+  // Set current speed (updates display and sends to content script)
+  function setSpeed(speed) {
+    speed = Math.max(MIN_SPEED, Math.min(MAX_SPEED, speed));
+    speed = Math.round(speed * 100) / 100;
+    currentSpeed = speed;
+    updateDisplay();
+    sendSpeedToTab(speed);
+  }
+
+  // Update all display elements
   function updateDisplay() {
-    currentSpeedDisplay.textContent = `${currentDefaultSpeed}x`;
-    speedInput.value = currentDefaultSpeed;
+    currentSpeedDisplay.textContent = `${currentSpeed}x`;
+    speedSlider.value = currentSpeed;
+    speedInput.value = currentSpeed;
+    saveBtn.textContent = `Save ${currentSpeed}x as Default`;
+    defaultInfo.textContent = `Current Default Speed: ${defaultSpeed}x`;
 
     // Update preset buttons
     presetBtns.forEach((btn) => {
       const speed = parseFloat(btn.dataset.speed);
-      btn.classList.toggle('active', speed === currentDefaultSpeed);
+      btn.classList.toggle('active', speed === currentSpeed);
     });
   }
 
-  // Show status message
-  function showStatus(message, type) {
-    statusEl.textContent = message;
-    statusEl.className = `status ${type}`;
-
-    setTimeout(() => {
-      statusEl.className = 'status';
-    }, 2000);
-  }
-
   // Event Listeners
-  saveBtn.addEventListener('click', () => {
+
+  // Close button - closes popup
+  closeBtn.addEventListener('click', () => {
+    window.close();
+  });
+
+  // Slider - sync all controls
+  speedSlider.addEventListener('input', () => {
+    setSpeed(parseFloat(speedSlider.value));
+  });
+
+  // Number input - sync all controls
+  speedInput.addEventListener('input', () => {
     const speed = parseFloat(speedInput.value);
     if (!isNaN(speed) && speed >= MIN_SPEED && speed <= MAX_SPEED) {
-      saveSpeed(speed);
-    } else {
-      showStatus(`Speed must be between ${MIN_SPEED} and ${MAX_SPEED}`, 'error');
+      setSpeed(speed);
     }
   });
 
@@ -81,15 +137,22 @@
     }
   });
 
-  resetBtn.addEventListener('click', () => {
-    saveSpeed(DEFAULT_SPEED);
-  });
-
+  // Preset buttons - set speed (not save)
   presetBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
-      const speed = parseFloat(btn.dataset.speed);
-      saveSpeed(speed);
+      setSpeed(parseFloat(btn.dataset.speed));
     });
+  });
+
+  // Save button
+  saveBtn.addEventListener('click', () => {
+    saveDefault(currentSpeed);
+  });
+
+  // Reset button
+  resetBtn.addEventListener('click', () => {
+    setSpeed(DEFAULT_SPEED);
+    saveDefault(DEFAULT_SPEED);
   });
 
   // Initialize
