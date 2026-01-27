@@ -40,6 +40,8 @@
     browser.storage.local
       .set({ defaultSpeed: speed })
       .catch((err) => console.log("YT Speed: Could not save settings", err));
+    // Broadcast to other tabs via background
+    browser.runtime.sendMessage({ action: 'broadcastDefaultSpeed', speed }).catch(() => {});
   }
 
   // ============ Speed Control ============
