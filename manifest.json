@@ -13,10 +13,7 @@
   ],
   "content_scripts": [
     {
-      "matches": [
-        "*://*.youtube.com/*",
-        "*://youtube.com/*"
-      ],
+      "matches": ["<all_urls>"],
       "css": ["shared.css", "content.css"],
       "js": ["content.js"],
       "run_at": "document_idle"

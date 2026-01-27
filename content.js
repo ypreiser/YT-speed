@@ -10,6 +10,9 @@
   const MAX_SPEED = 16;
   const DEFAULT_SPEED = 1;
 
+  // Site detection
+  const isYouTube = location.hostname.includes('youtube.com');
+
   // State
   let currentSpeed = DEFAULT_SPEED;
   let defaultSpeed = DEFAULT_SPEED;
@@ -276,7 +279,7 @@
       }
 
       if (hasNewVideo) applySpeedToAllVideos();
-      if (hasPlayerControls) createPlayerControl();
+      if (hasPlayerControls && isYouTube) createPlayerControl();
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
@@ -332,7 +335,7 @@
     // Initial setup with retries
     const setup = () => {
       applySpeedToAllVideos();
-      createPlayerControl();
+      if (isYouTube) createPlayerControl();
     };
 
     setup();
