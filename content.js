@@ -315,6 +315,9 @@
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'setSpeed' && typeof message.speed === 'number') {
       setSpeed(message.speed);
+    } else if (message.action === 'setDefaultSpeed' && typeof message.speed === 'number') {
+      defaultSpeed = message.speed;
+      updateSpeedDisplay();
     } else if (message.action === 'getSpeed') {
       sendResponse({ currentSpeed, defaultSpeed });
     }

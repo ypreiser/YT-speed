@@ -75,6 +75,12 @@
     browser.storage.local.set({ defaultSpeed: speed }).then(() => {
       defaultSpeed = speed;
       updateDisplay();
+      // Notify content script
+      browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
+        if (tabs[0]?.id) {
+          browser.tabs.sendMessage(tabs[0].id, { action: 'setDefaultSpeed', speed }).catch(() => {});
+        }
+      });
       // Show saved feedback
       saveBtn.textContent = 'Saved!';
       saveBtn.classList.add('saved');
