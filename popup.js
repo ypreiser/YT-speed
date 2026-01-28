@@ -13,7 +13,8 @@
   const currentSpeedDisplay = document.getElementById('current-speed');
   const speedSlider = document.getElementById('speed-slider');
   const speedInput = document.getElementById('speed-input');
-  const saveBtn = document.getElementById('save-btn');
+  const saveSiteBtn = document.getElementById('save-site-btn');
+  const saveGlobalBtn = document.getElementById('save-global-btn');
   const resetBtn = document.getElementById('reset-btn');
   const closeBtn = document.getElementById('close-btn');
   const settingsBtn = document.getElementById('settings-btn');
@@ -64,30 +65,41 @@
     });
   }
 
-  // Save default speed (sends to content script which saves per-site)
-  function saveDefault(speed) {
+  // Save for this site (sends to content script)
+  function saveSiteSpeed(speed) {
     speed = Math.max(MIN_SPEED, Math.min(MAX_SPEED, speed));
     speed = Math.round(speed * 100) / 100;
 
     browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
       if (tabs[0]?.id) {
-        // Tell content script to save (it will save per-site)
-        browser.tabs.sendMessage(tabs[0].id, { action: 'saveDefaultSpeed', speed }).catch(() => {
-          // Fallback: save globally
-          browser.storage.local.set({ defaultSpeed: speed });
-        });
-      } else {
-        browser.storage.local.set({ defaultSpeed: speed });
+        browser.tabs.sendMessage(tabs[0].id, { action: 'saveDefaultSpeed', speed }).catch(() => {});
       }
     });
 
     defaultSpeed = speed;
     updateDisplay();
-    saveBtn.textContent = 'Saved!';
-    saveBtn.classList.add('saved');
+    saveSiteBtn.textContent = 'Saved!';
+    saveSiteBtn.classList.add('saved');
     setTimeout(() => {
-      saveBtn.classList.remove('saved');
-      updateDisplay();
+      saveSiteBtn.classList.remove('saved');
+      saveSiteBtn.textContent = 'Save for Site';
+    }, 800);
+  }
+
+  // Save for all sites (global default)
+  function saveGlobalSpeed(speed) {
+    speed = Math.max(MIN_SPEED, Math.min(MAX_SPEED, speed));
+    speed = Math.round(speed * 100) / 100;
+
+    browser.storage.local.set({ defaultSpeed: speed });
+
+    defaultSpeed = speed;
+    updateDisplay();
+    saveGlobalBtn.textContent = 'Saved!';
+    saveGlobalBtn.classList.add('saved');
+    setTimeout(() => {
+      saveGlobalBtn.classList.remove('saved');
+      saveGlobalBtn.textContent = 'Save for All';
     }, 800);
   }
 
@@ -105,8 +117,7 @@
     currentSpeedDisplay.textContent = `${currentSpeed}x`;
     speedSlider.value = currentSpeed;
     speedInput.value = currentSpeed;
-    saveBtn.textContent = `Save ${currentSpeed}x as Default`;
-    defaultInfo.textContent = `Current Default Speed: ${defaultSpeed}x (this site)`;
+    defaultInfo.textContent = `Default: ${defaultSpeed}x (this site)`;
 
     presetBtns.forEach((btn) => {
       const speed = parseFloat(btn.dataset.speed);
@@ -133,7 +144,7 @@
   });
 
   speedInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') saveBtn.click();
+    if (e.key === 'Enter') saveSiteBtn.click();
   });
 
   presetBtns.forEach((btn) => {
@@ -142,11 +153,12 @@
     });
   });
 
-  saveBtn.addEventListener('click', () => saveDefault(currentSpeed));
+  saveSiteBtn.addEventListener('click', () => saveSiteSpeed(currentSpeed));
+  saveGlobalBtn.addEventListener('click', () => saveGlobalSpeed(currentSpeed));
 
   resetBtn.addEventListener('click', () => {
     setSpeed(DEFAULT_SPEED);
-    saveDefault(DEFAULT_SPEED);
+    saveSiteSpeed(DEFAULT_SPEED);
   });
 
   // Initialize

@@ -33,8 +33,8 @@
       const config = configs[site];
       return `
         <div class="site-config-item" data-site="${site}">
+          <div class="site-config-name">${site}</div>
           <div class="site-config-info">
-            <div class="site-config-name">${site}</div>
             <div class="site-config-details">
               Speed: ${config.defaultSpeed || 1}x ·
               ${config.hidden ? 'Hidden' : 'Visible'}

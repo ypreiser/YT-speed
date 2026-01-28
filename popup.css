@@ -35,6 +35,15 @@ body {
   gap: 8px;
 }
 
+.yt-speed-save-row {
+  display: flex;
+  gap: 8px;
+}
+
+.yt-speed-save-row .yt-speed-action {
+  flex: 1;
+}
+
 /* Info/footer */
 .yt-speed-info {
   margin-top: 12px;

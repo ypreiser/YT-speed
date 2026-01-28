@@ -152,7 +152,6 @@
       display: document.getElementById("yt-speed-display"),
       customInput: document.getElementById("yt-speed-custom"),
       rangeInput: document.getElementById("yt-speed-range"),
-      saveBtn: document.getElementById("yt-speed-save-default"),
       infoText: document.querySelector(".yt-speed-info"),
       playerText: document.querySelector(".yt-speed-player-text"),
     };
@@ -161,10 +160,8 @@
     if (elements.display) elements.display.textContent = `${currentSpeed}x`;
     if (elements.customInput) elements.customInput.value = currentSpeed;
     if (elements.rangeInput) elements.rangeInput.value = currentSpeed;
-    if (elements.saveBtn)
-      elements.saveBtn.textContent = `Save ${currentSpeed}x as Default`;
     if (elements.infoText)
-      elements.infoText.textContent = `Current Default Speed: ${defaultSpeed}x`;
+      elements.infoText.textContent = `Default: ${defaultSpeed}x (this site)`;
     if (elements.playerText)
       elements.playerText.textContent = `${currentSpeed}x`;
 
@@ -232,7 +229,10 @@
           <input type="number" id="yt-speed-custom" min="${MIN_SPEED}" max="${MAX_SPEED}" step="0.05" value="${currentSpeed}">
         </div>
         <div class="yt-speed-actions">
-          <button class="yt-speed-action" id="yt-speed-save-default">Save ${currentSpeed}x as Default</button>
+          <div class="yt-speed-save-row">
+            <button class="yt-speed-action" id="yt-speed-save-site">Save for Site</button>
+            <button class="yt-speed-action" id="yt-speed-save-global">Save for All</button>
+          </div>
           <button class="yt-speed-action yt-speed-reset" id="yt-speed-reset">Reset to 1x</button>
         </div>
         <div class="yt-speed-info">Current Default Speed: ${defaultSpeed}x (this site)</div>
@@ -250,7 +250,8 @@
     const panel = document.getElementById("yt-speed-panel");
     const closeBtn = document.querySelector(".yt-speed-close");
     const customInput = document.getElementById("yt-speed-custom");
-    const saveDefault = document.getElementById("yt-speed-save-default");
+    const saveSiteBtn = document.getElementById("yt-speed-save-site");
+    const saveGlobalBtn = document.getElementById("yt-speed-save-global");
     const resetBtn = document.getElementById("yt-speed-reset");
     const rangeInput = document.getElementById("yt-speed-range");
     const hideToggle = document.querySelector(".yt-speed-hide-toggle");
@@ -320,24 +321,39 @@
       }
     });
 
-    // Custom speed (Enter key to save as default)
+    // Custom speed (Enter key to save for site)
     customInput.addEventListener("keypress", (e) => {
       if (e.key === "Enter") {
-        saveDefault.click();
+        saveSiteBtn.click();
       }
     });
 
-    // Save as default
-    saveDefault.addEventListener("click", () => {
+    // Save for this site
+    saveSiteBtn.addEventListener("click", () => {
       saveDefaultSpeed(currentSpeed);
       updateSpeedDisplay();
-      saveDefault.textContent = "Saved!";
-      saveDefault.classList.add("saved");
+      saveSiteBtn.textContent = "Saved!";
+      saveSiteBtn.classList.add("saved");
       setTimeout(() => {
         uiVisible = false;
         panel.classList.remove("visible");
-        saveDefault.textContent = `Save ${currentSpeed}x as Default`;
-        saveDefault.classList.remove("saved");
+        saveSiteBtn.textContent = "Save for Site";
+        saveSiteBtn.classList.remove("saved");
+      }, 800);
+    });
+
+    // Save for all sites (global default)
+    saveGlobalBtn.addEventListener("click", async () => {
+      await browser.storage.local.set({ defaultSpeed: currentSpeed });
+      defaultSpeed = currentSpeed;
+      updateSpeedDisplay();
+      saveGlobalBtn.textContent = "Saved!";
+      saveGlobalBtn.classList.add("saved");
+      setTimeout(() => {
+        uiVisible = false;
+        panel.classList.remove("visible");
+        saveGlobalBtn.textContent = "Save for All";
+        saveGlobalBtn.classList.remove("saved");
       }, 800);
     });
 
