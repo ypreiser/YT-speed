@@ -53,7 +53,7 @@
               </svg>
             </button>
           </div>
-          <div class="site-config-editor" style="display: none;">
+          <div class="site-config-editor">
             <div class="editor-row">
               <label>Speed</label>
               <input type="number" class="editor-speed" min="0.25" max="16" step="0.25" value="${config.defaultSpeed || 1}">
@@ -76,15 +76,10 @@
     // Add event handlers
     siteConfigsList.querySelectorAll('.site-config-item').forEach(item => {
       const site = item.dataset.site;
-      const editor = item.querySelector('.site-config-editor');
-      const info = item.querySelector('.site-config-info');
-      const actions = item.querySelector('.site-config-actions');
 
       // Edit button
       item.querySelector('.site-config-edit').addEventListener('click', () => {
-        editor.style.display = 'block';
-        info.style.display = 'none';
-        actions.style.display = 'none';
+        item.classList.add('editing');
       });
 
       // Delete button
@@ -101,9 +96,7 @@
 
       // Cancel button
       item.querySelector('.editor-cancel').addEventListener('click', () => {
-        editor.style.display = 'none';
-        info.style.display = 'block';
-        actions.style.display = 'flex';
+        item.classList.remove('editing');
       });
     });
   }

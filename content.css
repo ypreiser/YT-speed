@@ -10,6 +10,10 @@
   -webkit-font-smoothing: antialiased;
 }
 
+#yt-speed-control.yt-speed-hidden {
+  display: none;
+}
+
 #yt-speed-toggle {
   width: 40px;
   height: 40px;

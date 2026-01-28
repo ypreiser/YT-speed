@@ -160,6 +160,20 @@ body {
 .site-config-editor {
   grid-column: 1 / -1;
   grid-row: 3;
+  display: none;
+}
+
+/* Editing state - show editor, hide info/actions */
+.site-config-item.editing .site-config-editor {
+  display: block;
+}
+
+.site-config-item.editing .site-config-info {
+  display: none;
+}
+
+.site-config-item.editing .site-config-actions {
+  display: none;
 }
 
 .site-config-actions {

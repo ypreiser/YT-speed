@@ -79,7 +79,7 @@
       createUI();
       uiCreated = true;
     } else if (container) {
-      container.style.display = (videoExists && !hidden) ? '' : 'none';
+      container.classList.toggle('yt-speed-hidden', !videoExists || hidden);
     }
   }
 
