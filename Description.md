@@ -15,6 +15,9 @@ YouTube Speed Control lets you set custom playback speeds on any website with HT
 **🌐 Universal Support**
 Works on YouTube, Vimeo, Twitch, and any site with HTML5 video elements.
 
+**📱 Mobile Ready**
+Full support for Firefox for Android with touch-friendly controls.
+
 **⚡ Per-Site Settings**
 Set different default speeds for different sites. Watch tutorials at 2x on YouTube while keeping Twitch streams at 1x.
 
@@ -22,6 +25,7 @@ Set different default speeds for different sites. Watch tutorials at 2x on YouTu
 A sleek, draggable speed control button appears on video pages. Position it anywhere - your preference is saved per-site.
 
 **🎚️ Flexible Speed Control**
+
 - Smooth slider for precise adjustment
 - Quick preset buttons (0.25x to 4x)
 - Custom input for any speed up to 16x
@@ -32,9 +36,6 @@ Hide the speed button per-tab, per-site, or globally. Access settings anytime vi
 
 **💾 Backup & Restore**
 Export all your settings to a file. Import them on another device or after reinstalling.
-
-**📱 Mobile Ready**
-Full support for Firefox for Android with touch-friendly controls.
 
 ### How to Use
 

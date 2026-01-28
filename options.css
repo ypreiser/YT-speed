@@ -4,7 +4,11 @@ body {
   margin: 0;
   padding: 40px 20px;
   background: #0a0a0b;
-  font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family:
+    "Geist",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   color: var(--yt-text-primary);
 }
