@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>YouTube Speed Control - Settings</title>
+    <link rel="stylesheet" href="shared.css" />
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <div class="options-container">
+      <div class="options-header">
+        <h1>YouTube Speed Control</h1>
+        <span class="options-subtitle">Settings</span>
+      </div>
+
+      <section class="options-section">
+        <h2>Global Settings</h2>
+        <div class="option-row">
+          <label>
+            <input type="checkbox" id="hide-global" />
+            <span>Hide button on all sites</span>
+          </label>
+        </div>
+        <div class="option-row">
+          <label for="global-speed">Default speed (for new sites)</label>
+          <input type="number" id="global-speed" min="0.25" max="16" step="0.25" value="1" />
+        </div>
+      </section>
+
+      <section class="options-section">
+        <h2>Per-Site Configurations</h2>
+        <p class="options-hint">Speed and position settings saved for each site</p>
+        <div id="site-configs-list" class="site-configs-list">
+          <p class="empty-message">No site-specific settings yet</p>
+        </div>
+      </section>
+
+      <section class="options-section">
+        <h2>Data Management</h2>
+        <div class="option-actions">
+          <button id="export-btn" class="option-btn">Export Settings</button>
+          <button id="import-btn" class="option-btn">Import Settings</button>
+          <button id="reset-btn" class="option-btn danger">Reset All Settings</button>
+        </div>
+        <input type="file" id="import-file" accept=".json" style="display: none" />
+      </section>
+
+      <div class="options-footer">
+        <span>YouTube Speed Control v1.0.0</span>
+      </div>
+    </div>
+
+    <script src="options.js"></script>
+  </body>
+</html>

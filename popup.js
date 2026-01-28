@@ -16,6 +16,7 @@
   const saveBtn = document.getElementById('save-btn');
   const resetBtn = document.getElementById('reset-btn');
   const closeBtn = document.getElementById('close-btn');
+  const settingsBtn = document.getElementById('settings-btn');
   const defaultInfo = document.getElementById('default-info');
   const presetBtns = document.querySelectorAll('.yt-speed-preset');
 
@@ -23,16 +24,13 @@
   function sendSpeedToTab(speed) {
     browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
       if (tabs[0]?.id) {
-        browser.tabs.sendMessage(tabs[0].id, { action: 'setSpeed', speed }).catch(() => {
-          // Tab might not have content script (not YouTube)
-        });
+        browser.tabs.sendMessage(tabs[0].id, { action: 'setSpeed', speed }).catch(() => {});
       }
     });
   }
 
   // Load settings - first try content script, fallback to storage
   function loadSettings() {
-    // Try to get current speed from active tab's content script
     browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
       if (tabs[0]?.id) {
         browser.tabs.sendMessage(tabs[0].id, { action: 'getSpeed' }).then((response) => {
@@ -42,7 +40,6 @@
             updateDisplay();
           }
         }).catch(() => {
-          // Not on YouTube, load from storage
           loadFromStorage();
         });
       } else {
@@ -67,33 +64,34 @@
     });
   }
 
-  // Save default speed
+  // Save default speed (sends to content script which saves per-site)
   function saveDefault(speed) {
     speed = Math.max(MIN_SPEED, Math.min(MAX_SPEED, speed));
     speed = Math.round(speed * 100) / 100;
 
-    browser.storage.local.set({ defaultSpeed: speed }).then(() => {
-      defaultSpeed = speed;
-      updateDisplay();
-      // Notify all tabs
-      browser.tabs.query({}).then((tabs) => {
-        tabs.forEach((tab) => {
-          browser.tabs.sendMessage(tab.id, { action: 'setDefaultSpeed', speed }).catch(() => {});
+    browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
+      if (tabs[0]?.id) {
+        // Tell content script to save (it will save per-site)
+        browser.tabs.sendMessage(tabs[0].id, { action: 'saveDefaultSpeed', speed }).catch(() => {
+          // Fallback: save globally
+          browser.storage.local.set({ defaultSpeed: speed });
         });
-      });
-      // Show saved feedback
-      saveBtn.textContent = 'Saved!';
-      saveBtn.classList.add('saved');
-      setTimeout(() => {
-        saveBtn.classList.remove('saved');
-        updateDisplay();
-      }, 800);
-    }).catch((err) => {
-      console.error('Failed to save settings:', err);
+      } else {
+        browser.storage.local.set({ defaultSpeed: speed });
+      }
     });
+
+    defaultSpeed = speed;
+    updateDisplay();
+    saveBtn.textContent = 'Saved!';
+    saveBtn.classList.add('saved');
+    setTimeout(() => {
+      saveBtn.classList.remove('saved');
+      updateDisplay();
+    }, 800);
   }
 
-  // Set current speed (updates display and sends to content script)
+  // Set current speed
   function setSpeed(speed) {
     speed = Math.max(MIN_SPEED, Math.min(MAX_SPEED, speed));
     speed = Math.round(speed * 100) / 100;
@@ -108,9 +106,8 @@
     speedSlider.value = currentSpeed;
     speedInput.value = currentSpeed;
     saveBtn.textContent = `Save ${currentSpeed}x as Default`;
-    defaultInfo.textContent = `Current Default Speed: ${defaultSpeed}x`;
+    defaultInfo.textContent = `Current Default Speed: ${defaultSpeed}x (this site)`;
 
-    // Update preset buttons
     presetBtns.forEach((btn) => {
       const speed = parseFloat(btn.dataset.speed);
       btn.classList.toggle('active', speed === currentSpeed);
@@ -118,18 +115,16 @@
   }
 
   // Event Listeners
+  closeBtn.addEventListener('click', () => window.close());
 
-  // Close button - closes popup
-  closeBtn.addEventListener('click', () => {
-    window.close();
+  settingsBtn.addEventListener('click', () => {
+    browser.runtime.openOptionsPage();
   });
 
-  // Slider - sync all controls
   speedSlider.addEventListener('input', () => {
     setSpeed(parseFloat(speedSlider.value));
   });
 
-  // Number input - sync all controls
   speedInput.addEventListener('input', () => {
     const speed = parseFloat(speedInput.value);
     if (!isNaN(speed) && speed >= MIN_SPEED && speed <= MAX_SPEED) {
@@ -138,24 +133,17 @@
   });
 
   speedInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      saveBtn.click();
-    }
+    if (e.key === 'Enter') saveBtn.click();
   });
 
-  // Preset buttons - set speed (not save)
   presetBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
       setSpeed(parseFloat(btn.dataset.speed));
     });
   });
 
-  // Save button
-  saveBtn.addEventListener('click', () => {
-    saveDefault(currentSpeed);
-  });
+  saveBtn.addEventListener('click', () => saveDefault(currentSpeed));
 
-  // Reset button
   resetBtn.addEventListener('click', () => {
     setSpeed(DEFAULT_SPEED);
     saveDefault(DEFAULT_SPEED);

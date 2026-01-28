@@ -68,6 +68,97 @@
 #yt-speed-panel .yt-speed-header {
   margin-bottom: 20px;
   padding-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.yt-speed-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Hide dropdown */
+.yt-speed-hide-dropdown {
+  position: relative;
+}
+
+.yt-speed-hide-toggle {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid var(--yt-border);
+  color: var(--yt-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.yt-speed-hide-toggle:hover {
+  background: var(--yt-bg-hover);
+  color: var(--yt-text-primary);
+  border-color: var(--yt-accent);
+}
+
+.yt-speed-hide-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: var(--yt-bg-primary);
+  border: 1px solid var(--yt-border);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 10;
+  min-width: 100px;
+}
+
+.yt-speed-hide-menu.visible {
+  display: block;
+}
+
+.yt-speed-hide-menu button {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  color: var(--yt-text-primary);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+.yt-speed-hide-menu button:hover {
+  background: var(--yt-bg-hover);
+}
+
+/* Settings button */
+.yt-speed-settings {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid var(--yt-border);
+  color: var(--yt-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.yt-speed-settings:hover {
+  background: var(--yt-bg-hover);
+  color: var(--yt-text-primary);
+  border-color: var(--yt-accent);
 }
 
 /* Display container */

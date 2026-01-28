@@ -4,9 +4,15 @@ browser.runtime.onMessage.addListener((message, sender) => {
     browser.tabs.query({}).then((tabs) => {
       tabs.forEach((tab) => {
         if (tab.id !== sender.tab?.id) {
-          browser.tabs.sendMessage(tab.id, { action: 'setDefaultSpeed', speed: message.speed }).catch(() => {});
+          browser.tabs.sendMessage(tab.id, {
+            action: 'setDefaultSpeed',
+            speed: message.speed,
+            hostname: message.hostname
+          }).catch(() => {});
         }
       });
     });
+  } else if (message.action === 'openOptions') {
+    browser.runtime.openOptionsPage();
   }
 });

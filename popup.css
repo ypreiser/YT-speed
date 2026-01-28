@@ -41,3 +41,31 @@ body {
   padding-top: 12px;
   border-top: 1px solid var(--yt-border);
 }
+
+/* Header actions */
+.yt-speed-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Settings button */
+.yt-speed-settings {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid var(--yt-border);
+  color: var(--yt-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.yt-speed-settings:hover {
+  background: var(--yt-bg-hover);
+  color: var(--yt-text-primary);
+  border-color: var(--yt-accent);
+}
