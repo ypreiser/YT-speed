@@ -1,135 +1,104 @@
 # YouTube Speed Control
 
-A lightweight Firefox extension for controlling YouTube video playback speed. Works on both desktop and mobile (Firefox for Android).
+A lightweight Firefox extension for controlling video playback speed on any website. Works on YouTube, Vimeo, Twitch, and any site with HTML5 video.
 
 ## Features
 
-- **Default Speed Setting** - Set your preferred playback speed that applies to all videos
-- **Extended Speed Range** - Go beyond YouTube's 2x limit (0.25x to 16x)
-- **Mobile-Friendly UI** - Floating, draggable speed control button
-- **Quick Presets** - One-tap access to common speeds (0.5x, 1x, 1.5x, 2x, 3x, 5x, 10x, 16x)
-- **Custom Speed Input** - Set any speed value you want
-- **Persistent Settings** - Your preferences are saved automatically
-- **Lightweight** - No external dependencies, pure JavaScript
+- **Universal Video Support** - Works on YouTube, Vimeo, Twitch, and any HTML5 video
+- **Per-Site Settings** - Different default speeds for different sites
+- **Extended Speed Range** - 0.25x to 16x (beyond YouTube's 2x limit)
+- **Draggable UI** - Floating panel that remembers position per-site
+- **Quick Presets** - One-tap access to common speeds
+- **Hide Options** - Hide button per-tab, per-site, or globally
+- **Export/Import** - Backup and restore all settings
+- **Mobile-Friendly** - Works on Firefox for Android
 
 ## Installation
 
-### Firefox Desktop (Temporary - for development)
+### Firefox Desktop
 
-1. Open Firefox and navigate to `about:debugging#/runtime/this-firefox`
+**Temporary (development):**
+1. Open `about:debugging#/runtime/this-firefox`
 2. Click "Load Temporary Add-on..."
-3. Navigate to this folder and select `manifest.json`
-4. The extension is now loaded! Visit YouTube to use it.
+3. Select `manifest.json`
 
-### Firefox Desktop (Permanent)
-
-1. Zip all the extension files (manifest.json, content.js, popup.html, popup.js, icons/)
-2. Submit to [Firefox Add-ons](https://addons.mozilla.org/) for review
-3. Once approved, users can install directly from the store
+**Permanent:**
+1. Build with `./build.sh` or `build.bat`
+2. Install the generated `.xpi` file
+3. Or submit to [Firefox Add-ons](https://addons.mozilla.org/)
 
 ### Firefox for Android
 
-1. Make sure you have Firefox for Android (version 113+)
-2. Enable "Custom Add-on collection" in Firefox settings:
-   - Go to Settings → About Firefox
-   - Tap the Firefox logo 5 times to enable debug menu
-   - Go back to Settings → Custom Add-on collection
-   - Enter your collection details or use the extension ID
-3. Alternatively, submit to Firefox Add-ons store for distribution
+1. Firefox for Android v113+
+2. Enable custom add-on collection in Settings
+3. Install from your collection or Firefox Add-ons store
 
 ## Usage
 
-### On-Page Controls (Mobile & Desktop)
+### Floating Panel
 
-1. **Red floating button** - Tap/click to open speed control panel
-2. **Speed display** - Shows current playback speed
-3. **Slider** - Drag to adjust speed smoothly
-4. **Preset buttons** - Quick access to common speeds
-5. **Custom input** - Enter any speed between 0.25x and 16x
-6. **Save as Default** - Make current speed your new default
-7. **Drag the button** - Move the control to any corner of the screen
+- **Speed button** - Click to open panel, drag to reposition
+- **Slider** - Smooth speed adjustment
+- **Presets** - Quick access to common speeds (0.25x - 4x)
+- **Custom input** - Enter any speed 0.25x - 16x
+- **Save for Site** - Save speed for current site
+- **Save for All** - Save as global default
+- **Reset to 1x** - Reset speed and default
+- **Hide button** - Hide per-tab, per-site, or globally
+- **Settings** - Open options page
 
-### Popup Settings (Desktop Only)
+### Options Page
 
-Click the extension icon in toolbar to:
+- Global default speed
+- Global hide toggle
+- Per-site configuration list (edit/delete)
+- Export/import settings
+- Reset all settings
 
-- View current default speed
-- Set a new default speed
-- Use preset buttons for quick changes
-- Reset to 1x (normal speed)
+### YouTube Player Integration
 
-## How It Works
-
-The extension injects a content script into YouTube pages that:
-
-1. Creates a floating UI overlay for speed control
-2. Applies your saved default speed to videos automatically
-3. Monitors for new videos and applies speed settings
-4. Overrides YouTube's speed reset attempts
-5. Stores preferences using browser.storage.local API
+On YouTube, a speed button appears in the player controls for quick access.
 
 ## File Structure
 
 ```
 YT-speed/
-├── manifest.json      # Extension configuration
-├── content.js         # Main script (speed control + UI)
-├── popup.html         # Settings popup (desktop)
-├── popup.js           # Popup functionality
-├── icons/
-│   ├── icon-48.svg    # Small icon
-│   └── icon-96.svg    # Large icon
-└── README.md          # This file
+├── manifest.json      # Extension manifest
+├── content.js         # Floating panel + speed control
+├── content.css        # Panel styles
+├── background.js      # Message routing
+├── popup.html/js      # Toolbar popup
+├── options.html/js    # Settings page
+├── shared.css         # Shared styles
+├── icons/             # Extension icons
+├── tests/             # Test suite
+│   ├── extension.test.js  # E2E tests (Selenium)
+│   ├── unit.test.js       # Unit tests
+│   └── helpers.js         # Test utilities
+└── package.json       # Test dependencies
 ```
+
+## Testing
+
+```bash
+npm install
+npm test                           # All tests
+npm test -- --testPathPattern=unit # Unit tests only
+```
+
+Requires Firefox for E2E tests.
 
 ## Browser Compatibility
 
-- **Firefox Desktop**: v57.0+
-- **Firefox for Android**: v113.0+
-- Uses Manifest V2 for broader compatibility
+- Firefox Desktop: v57.0+
+- Firefox for Android: v113.0+
+- Manifest V2
 
 ## Permissions
 
-- **storage** - Save your speed preferences locally
-
-## Tips
-
-- **Draggable UI**: Long-press and drag the red button to reposition it
-- **Speed Persistence**: Your default speed applies to all YouTube videos
-- **Override YouTube**: The extension counters YouTube's automatic speed resets
-- **High Speeds**: Videos at 10x+ may have audio issues (browser limitation)
-
-## Troubleshooting
-
-**UI not appearing?**
-
-- Refresh the YouTube page
-- Check that the extension is enabled
-- Try disabling other YouTube extensions that might conflict
-
-**Speed keeps resetting?**
-
-- The extension monitors and re-applies your speed
-- Some YouTube updates may temporarily reset speed
-
-**Audio issues at high speeds?**
-
-- This is a browser limitation, not the extension
-- Try reducing speed if audio cuts out
-
-## Development
-
-To modify the extension:
-
-1. Edit the source files
-2. Go to `about:debugging` → "This Firefox"
-3. Click "Reload" on the extension
-4. Refresh YouTube to see changes
+- **storage** - Save preferences locally
+- **tabs** - Communicate with content scripts
 
 ## License
 
-MIT License - Feel free to modify and distribute.
-
-## Contributing
-
-Contributions welcome! Feel free to submit issues and pull requests.
+MIT License
