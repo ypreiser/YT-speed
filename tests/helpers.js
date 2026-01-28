@@ -1,0 +1,411 @@
+/**
+ * Test helpers for YouTube Speed Control extension
+ * Uses web-ext to launch Firefox with extension, Selenium for automation
+ */
+
+const { Builder, By, until, Key } = require('selenium-webdriver');
+const firefox = require('selenium-webdriver/firefox');
+const path = require('path');
+const { spawn } = require('child_process');
+const fs = require('fs');
+
+// Extension source path
+const EXTENSION_DIR = path.resolve(__dirname, '..');
+
+// Find .xpi file or use directory
+function getExtensionPath() {
+  const files = fs.readdirSync(EXTENSION_DIR);
+  const xpi = files.find(f => f.endsWith('.xpi'));
+  if (xpi) {
+    return path.join(EXTENSION_DIR, xpi);
+  }
+  return EXTENSION_DIR;
+}
+
+const EXTENSION_PATH = getExtensionPath();
+
+// Test URLs
+const TEST_URLS = {
+  youtube: 'https://www.youtube.com/watch?v=jNQXAC9IVRw', // First YouTube video ever
+  vimeo: 'https://vimeo.com/347119375', // Public test video
+  twitch: 'https://www.twitch.tv/videos/2231706716', // Public VOD
+  noVideo: 'https://example.com',
+};
+
+// Element selectors
+const SELECTORS = {
+  container: '#yt-speed-control',
+  toggleBtn: '#yt-speed-toggle',
+  panel: '#yt-speed-panel',
+  speedDisplay: '#yt-speed-display',
+  rangeSlider: '#yt-speed-range',
+  customInput: '#yt-speed-custom',
+  saveSiteBtn: '#yt-speed-save-site',
+  saveGlobalBtn: '#yt-speed-save-global',
+  resetBtn: '#yt-speed-reset',
+  closeBtn: '.yt-speed-close',
+  presetBtns: '.yt-speed-preset',
+  settingsBtn: '.yt-speed-settings',
+  hideToggle: '.yt-speed-hide-toggle',
+  hideMenu: '.yt-speed-hide-menu',
+};
+
+// Helper class for browser automation
+class ExtensionHelper {
+  constructor() {
+    this.driver = null;
+    this.webExtProcess = null;
+  }
+
+  /**
+   * Launch Firefox with extension loaded via web-ext
+   */
+  async launch() {
+    // Create Firefox options
+    const options = new firefox.Options();
+
+    // Set Firefox binary path if not in PATH
+    const firefoxPaths = [
+      'C:\\Program Files\\Mozilla Firefox\\firefox.exe',
+      'C:\\Program Files (x86)\\Mozilla Firefox\\firefox.exe',
+      '/usr/bin/firefox',
+      '/Applications/Firefox.app/Contents/MacOS/firefox',
+    ];
+    for (const fp of firefoxPaths) {
+      if (fs.existsSync(fp)) {
+        options.setBinary(fp);
+        break;
+      }
+    }
+
+    // For CI, run headless
+    if (process.env.CI || process.env.HEADLESS) {
+      options.addArguments('-headless');
+    }
+
+    // Build driver
+    this.driver = await new Builder()
+      .forBrowser('firefox')
+      .setFirefoxOptions(options)
+      .build();
+
+    // Load extension as temporary add-on
+    await this.loadExtension();
+
+    // Set reasonable timeouts
+    await this.driver.manage().setTimeouts({
+      implicit: 5000,
+      pageLoad: 30000,
+      script: 10000,
+    });
+
+    return this.driver;
+  }
+
+  /**
+   * Load extension into Firefox as temporary add-on
+   */
+  async loadExtension() {
+    try {
+      // Install extension as temporary add-on
+      // This works with unsigned extensions in Firefox
+      await this.driver.installAddon(EXTENSION_PATH, true);
+    } catch (e) {
+      // Extension load failed - tests will fail to find UI elements
+      this.extensionLoadError = e.message;
+    }
+  }
+
+  /**
+   * Navigate to URL and wait for page load
+   */
+  async navigate(url) {
+    await this.driver.get(url);
+    await this.driver.wait(until.urlContains(new URL(url).hostname), 10000);
+    // Wait extra for dynamic content
+    await this.sleep(2000);
+  }
+
+  /**
+   * Wait for extension UI to appear
+   */
+  async waitForExtensionUI(timeout = 15000) {
+    try {
+      await this.driver.wait(
+        until.elementLocated(By.css(SELECTORS.container)),
+        timeout
+      );
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * Check if extension UI is visible
+   */
+  async isUIVisible() {
+    try {
+      const container = await this.driver.findElement(By.css(SELECTORS.container));
+      return await container.isDisplayed();
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * Open the speed panel
+   */
+  async openPanel() {
+    const toggle = await this.driver.findElement(By.css(SELECTORS.toggleBtn));
+    await toggle.click();
+    await this.sleep(300);
+  }
+
+  /**
+   * Close the speed panel
+   */
+  async closePanel() {
+    const closeBtn = await this.driver.findElement(By.css(SELECTORS.closeBtn));
+    await closeBtn.click();
+    await this.sleep(300);
+  }
+
+  /**
+   * Get video playback rate
+   */
+  async getPlaybackRate() {
+    const rate = await this.driver.executeScript(() => {
+      const video = document.querySelector('video');
+      return video ? video.playbackRate : null;
+    });
+    return rate;
+  }
+
+  /**
+   * Get displayed speed from toggle button
+   */
+  async getDisplayedSpeed() {
+    const toggle = await this.driver.findElement(By.css(SELECTORS.toggleBtn));
+    const text = await toggle.getText();
+    return parseFloat(text.replace('x', ''));
+  }
+
+  /**
+   * Set speed via slider
+   */
+  async setSpeedViaSlider(speed) {
+    await this.openPanel();
+    const slider = await this.driver.findElement(By.css(SELECTORS.rangeSlider));
+
+    // Scroll into view
+    await this.driver.executeScript('arguments[0].scrollIntoView({block: "center"})', slider);
+    await this.sleep(100);
+
+    // Use JavaScript to set the value directly and trigger input event
+    await this.driver.executeScript(`
+      arguments[0].value = ${speed};
+      arguments[0].dispatchEvent(new Event('input', { bubbles: true }));
+    `, slider);
+
+    await this.sleep(200);
+  }
+
+  /**
+   * Set speed via custom input
+   */
+  async setSpeedViaInput(speed) {
+    await this.openPanel();
+    const input = await this.driver.findElement(By.css(SELECTORS.customInput));
+
+    // Scroll into view
+    await this.driver.executeScript('arguments[0].scrollIntoView({block: "center"})', input);
+    await this.sleep(100);
+
+    // Use JavaScript to set value and trigger input event
+    await this.driver.executeScript(`
+      arguments[0].value = ${speed};
+      arguments[0].dispatchEvent(new Event('input', { bubbles: true }));
+    `, input);
+
+    await this.sleep(200);
+  }
+
+  /**
+   * Click a preset button
+   */
+  async clickPreset(speed) {
+    await this.openPanel();
+    // Use JS click to avoid scroll issues
+    await this.driver.executeScript(`
+      document.querySelector('${SELECTORS.presetBtns}[data-speed="${speed}"]').click();
+    `);
+    await this.sleep(200);
+  }
+
+  /**
+   * Click Save for Site button
+   */
+  async clickSaveForSite() {
+    const btn = await this.driver.findElement(By.css(SELECTORS.saveSiteBtn));
+    await btn.click();
+    await this.sleep(1000); // Wait for save animation
+  }
+
+  /**
+   * Click Save for All button
+   */
+  async clickSaveForAll() {
+    const btn = await this.driver.findElement(By.css(SELECTORS.saveGlobalBtn));
+    await btn.click();
+    await this.sleep(1000);
+  }
+
+  /**
+   * Click Reset to 1x button
+   */
+  async clickReset() {
+    const btn = await this.driver.findElement(By.css(SELECTORS.resetBtn));
+    await btn.click();
+    await this.sleep(200);
+  }
+
+  /**
+   * Drag the panel to new position
+   */
+  async dragPanel(deltaX, deltaY) {
+    const toggle = await this.driver.findElement(By.css(SELECTORS.toggleBtn));
+
+    const actions = this.driver.actions({ async: true });
+    await actions
+      .move({ origin: toggle })
+      .press()
+      .move({ origin: toggle, x: deltaX, y: deltaY })
+      .release()
+      .perform();
+
+    await this.sleep(300);
+  }
+
+  /**
+   * Get panel position
+   */
+  async getPanelPosition() {
+    const container = await this.driver.findElement(By.css(SELECTORS.container));
+    const rect = await container.getRect();
+    return { x: rect.x, y: rect.y };
+  }
+
+  /**
+   * Open options page
+   */
+  async openOptionsPage() {
+    // Get extension ID and construct options URL
+    // For web-ext, the ID is typically in manifest
+    const optionsUrl = `moz-extension://*/options.html`;
+
+    // Alternative: Click settings button if panel is open
+    try {
+      await this.openPanel();
+      const settingsBtn = await this.driver.findElement(By.css(SELECTORS.settingsBtn));
+      await settingsBtn.click();
+      await this.sleep(1000);
+
+      // Switch to new tab
+      const handles = await this.driver.getAllWindowHandles();
+      if (handles.length > 1) {
+        await this.driver.switchTo().window(handles[handles.length - 1]);
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * Get storage data via browser console
+   */
+  async getStorageData() {
+    // This requires extension context access
+    // For testing, we verify behavior rather than direct storage access
+    return null;
+  }
+
+  /**
+   * Sleep for ms
+   */
+  async sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Take screenshot for debugging
+   */
+  async screenshot(name) {
+    const screenshot = await this.driver.takeScreenshot();
+    const dir = path.join(__dirname, 'screenshots');
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir);
+    }
+    fs.writeFileSync(path.join(dir, `${name}.png`), screenshot, 'base64');
+  }
+
+  /**
+   * Close browser
+   */
+  async close() {
+    if (this.driver) {
+      await this.driver.quit();
+      this.driver = null;
+    }
+    if (this.webExtProcess) {
+      this.webExtProcess.kill();
+      this.webExtProcess = null;
+    }
+  }
+}
+
+/**
+ * Alternative: Launch browser via web-ext run command
+ * Returns Firefox profile path for Selenium to connect
+ */
+async function launchWithWebExt() {
+  return new Promise((resolve, reject) => {
+    const webExt = spawn('npx', [
+      'web-ext', 'run',
+      '--source-dir', EXTENSION_PATH,
+      '--no-reload',
+      '--verbose'
+    ], {
+      shell: true,
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+
+    let stderr = '';
+
+    webExt.stderr.on('data', (data) => {
+      stderr += data.toString();
+      // Look for Firefox launch message
+      if (data.toString().includes('Firefox launched')) {
+        resolve(webExt);
+      }
+    });
+
+    webExt.on('error', reject);
+
+    // Timeout after 30s
+    setTimeout(() => {
+      if (!webExt.killed) {
+        reject(new Error('web-ext launch timeout'));
+      }
+    }, 30000);
+  });
+}
+
+module.exports = {
+  ExtensionHelper,
+  launchWithWebExt,
+  TEST_URLS,
+  SELECTORS,
+  EXTENSION_PATH,
+};

@@ -1,3 +1,6 @@
 .claude/
 *.xpi
 *.zip
+node_modules/
+package-lock.json
+tests/screenshots/
