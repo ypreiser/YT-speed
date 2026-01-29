@@ -189,14 +189,9 @@
 
   // ============ Floating UI ============
 
-  function createUI() {
-    const existingUI = document.getElementById("yt-speed-control");
-    if (existingUI) existingUI.remove();
-
-    container = document.createElement("div");
-    container.id = "yt-speed-control";
-    container.innerHTML = `
-      <button id="yt-speed-toggle">${currentSpeed}x</button>
+  function buildUITemplate() {
+    return `
+      <button id="yt-speed-toggle"></button>
       <div id="yt-speed-panel">
         <div class="yt-speed-header">
           <span>PLAYBACK SPEED</span>
@@ -224,22 +219,16 @@
           </div>
         </div>
         <div class="yt-speed-display-container">
-          <div class="yt-speed-current" id="yt-speed-display">${currentSpeed}x</div>
+          <div class="yt-speed-current" id="yt-speed-display"></div>
           <div class="yt-speed-label">CURRENT SPEED</div>
         </div>
         <div class="yt-speed-slider">
-          <input type="range" id="yt-speed-range" min="${SPEED_MIN}" max="${SPEED_MAX}" step="0.05" value="${currentSpeed}">
+          <input type="range" id="yt-speed-range" step="0.05">
         </div>
-        <div class="yt-speed-presets">
-          ${SPEED_PRESETS.map(
-            (speed) => `
-            <button class="yt-speed-preset ${speed === currentSpeed ? "active" : ""}" data-speed="${speed}">${speed}x</button>
-          `,
-          ).join("")}
-        </div>
+        <div class="yt-speed-presets"></div>
         <div class="yt-speed-custom">
-          <label>CUSTOM SPEED (${SPEED_MIN}x – ${SPEED_MAX}x)</label>
-          <input type="number" id="yt-speed-custom" min="${SPEED_MIN}" max="${SPEED_MAX}" step="0.05" value="${currentSpeed}">
+          <label></label>
+          <input type="number" id="yt-speed-custom" step="0.05">
         </div>
         <div class="yt-speed-actions">
           <div class="yt-speed-save-row">
@@ -248,9 +237,45 @@
           </div>
           <button class="yt-speed-action yt-speed-reset" id="yt-speed-reset">Reset to 1x</button>
         </div>
-        <div class="yt-speed-info">Current Default Speed: ${defaultSpeed}x (this site)</div>
+        <div class="yt-speed-info"></div>
       </div>
     `;
+  }
+
+  function createUI() {
+    const existingUI = document.getElementById("yt-speed-control");
+    if (existingUI) existingUI.remove();
+
+    container = document.createElement("div");
+    container.id = "yt-speed-control";
+    container.innerHTML = buildUITemplate();
+
+    // Set dynamic values via DOM (safer than template interpolation)
+    container.querySelector("#yt-speed-toggle").textContent = currentSpeed + "x";
+    container.querySelector("#yt-speed-display").textContent = currentSpeed + "x";
+    const rangeEl = container.querySelector("#yt-speed-range");
+    rangeEl.min = SPEED_MIN;
+    rangeEl.max = SPEED_MAX;
+    rangeEl.value = currentSpeed;
+    const customEl = container.querySelector("#yt-speed-custom");
+    customEl.min = SPEED_MIN;
+    customEl.max = SPEED_MAX;
+    customEl.value = currentSpeed;
+    container.querySelector(".yt-speed-custom label").textContent =
+      "CUSTOM SPEED (" + SPEED_MIN + "x – " + SPEED_MAX + "x)";
+    container.querySelector(".yt-speed-info").textContent =
+      "Current Default Speed: " + defaultSpeed + "x (this site)";
+
+    // Build preset buttons
+    const presetsContainer = container.querySelector(".yt-speed-presets");
+    presetsContainer.innerHTML = "";
+    SPEED_PRESETS.forEach((speed) => {
+      const btn = document.createElement("button");
+      btn.className = "yt-speed-preset" + (speed === currentSpeed ? " active" : "");
+      btn.dataset.speed = speed;
+      btn.textContent = speed + "x";
+      presetsContainer.appendChild(btn);
+    });
 
     document.body.appendChild(container);
     attachUIEventListeners(container);
@@ -489,7 +514,10 @@
     btn.className = "yt-speed-player-btn ytp-button";
     btn.title = "Playback Speed";
     btn.setAttribute("onclick", "event.stopPropagation(); window.__ytSpeedToggle(); return false;");
-    btn.innerHTML = `<span class="yt-speed-player-text">${currentSpeed}x</span>`;
+    const span = document.createElement("span");
+    span.className = "yt-speed-player-text";
+    span.textContent = currentSpeed + "x";
+    btn.appendChild(span);
 
     // Insert at the beginning of right controls
     rightControls.insertBefore(btn, rightControls.firstChild);
