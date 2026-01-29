@@ -1,3 +1,5 @@
+// YouTube Speed Control - Background Script
+
 // Relay broadcasts from content scripts
 browser.runtime.onMessage.addListener((message, sender) => {
   if (message.action === 'broadcastDefaultSpeed' && typeof message.speed === 'number') {

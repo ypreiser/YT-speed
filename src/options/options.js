@@ -2,6 +2,42 @@
 (function() {
   'use strict';
 
+  const SPEED_MIN = 0.25;
+  const SPEED_MAX = 16;
+  const VALID_CONFIG_KEYS = ['defaultSpeed', 'hideGlobal', 'panelPosition', 'siteConfigs'];
+
+  function clampSpeed(speed) {
+    return Math.max(SPEED_MIN, Math.min(SPEED_MAX, speed));
+  }
+
+  function validateSpeed(value) {
+    const num = parseFloat(value);
+    return !isNaN(num) && num >= SPEED_MIN && num <= SPEED_MAX;
+  }
+
+  function validateImportData(data) {
+    if (typeof data !== 'object' || data === null) return false;
+    const validKeys = new Set(VALID_CONFIG_KEYS);
+    for (const key of Object.keys(data)) {
+      if (!validKeys.has(key)) return false;
+    }
+    if (data.defaultSpeed !== undefined && !validateSpeed(data.defaultSpeed)) return false;
+    if (data.hideGlobal !== undefined && typeof data.hideGlobal !== 'boolean') return false;
+    if (data.panelPosition !== undefined) {
+      if (typeof data.panelPosition !== 'object' || data.panelPosition === null) return false;
+      if (typeof data.panelPosition.x !== 'number' || typeof data.panelPosition.y !== 'number') return false;
+    }
+    if (data.siteConfigs) {
+      if (typeof data.siteConfigs !== 'object') return false;
+      for (const [site, cfg] of Object.entries(data.siteConfigs)) {
+        if (typeof cfg !== 'object' || cfg === null) return false;
+        if (cfg.defaultSpeed !== undefined && !validateSpeed(cfg.defaultSpeed)) return false;
+        if (cfg.hidden !== undefined && typeof cfg.hidden !== 'boolean') return false;
+      }
+    }
+    return true;
+  }
+
   const hideGlobalCheckbox = document.getElementById('hide-global');
   const globalSpeedInput = document.getElementById('global-speed');
   const siteConfigsList = document.getElementById('site-configs-list');
@@ -56,7 +92,7 @@
           <div class="site-config-editor">
             <div class="editor-row">
               <label>Speed</label>
-              <input type="number" class="editor-speed" min="0.25" max="16" step="0.25" value="${config.defaultSpeed || 1}">
+              <input type="number" class="editor-speed" min="${SPEED_MIN}" max="${SPEED_MAX}" step="0.25" value="${config.defaultSpeed || 1}">
             </div>
             <div class="editor-row">
               <label>
@@ -89,9 +125,13 @@
 
       // Save button
       item.querySelector('.editor-save').addEventListener('click', async () => {
-        const speed = parseFloat(item.querySelector('.editor-speed').value);
+        const speedInput = item.querySelector('.editor-speed');
+        const speed = parseFloat(speedInput.value);
         const hidden = item.querySelector('.editor-hidden').checked;
-        await updateSiteConfig(site, { defaultSpeed: speed, hidden });
+
+        // Validate and clamp speed
+        const clampedSpeed = clampSpeed(speed);
+        await updateSiteConfig(site, { defaultSpeed: clampedSpeed, hidden });
       });
 
       // Cancel button
@@ -125,8 +165,15 @@
 
   globalSpeedInput.addEventListener('change', async () => {
     const speed = parseFloat(globalSpeedInput.value);
-    if (!isNaN(speed) && speed >= 0.25 && speed <= 16) {
-      await browser.storage.local.set({ defaultSpeed: speed });
+    if (validateSpeed(speed)) {
+      // Clamp to valid range
+      const clampedSpeed = clampSpeed(speed);
+      globalSpeedInput.value = clampedSpeed;
+      await browser.storage.local.set({ defaultSpeed: clampedSpeed });
+    } else {
+      // Reset to current stored value
+      const data = await browser.storage.local.get('defaultSpeed');
+      globalSpeedInput.value = data.defaultSpeed || 1;
     }
   });
 
@@ -152,6 +199,14 @@
     try {
       const text = await file.text();
       const data = JSON.parse(text);
+
+      // Validate import data
+      if (!validateImportData(data)) {
+        alert('Import failed: Invalid settings format or values out of range');
+        importFile.value = '';
+        return;
+      }
+
       await browser.storage.local.set(data);
       loadSettings();
       alert('Settings imported!');

@@ -2,9 +2,17 @@
 (function() {
   'use strict';
 
-  const MIN_SPEED = 0.25;
-  const MAX_SPEED = 16;
+  const SPEED_MIN = 0.25;
+  const SPEED_MAX = 16;
   const DEFAULT_SPEED = 1;
+
+  function clampSpeed(speed) {
+    return Math.max(SPEED_MIN, Math.min(SPEED_MAX, speed));
+  }
+
+  function roundSpeed(speed) {
+    return Math.round(speed * 100) / 100;
+  }
 
   let currentSpeed = DEFAULT_SPEED;
   let defaultSpeed = DEFAULT_SPEED;
@@ -67,8 +75,7 @@
 
   // Save for this site (sends to content script)
   function saveSiteSpeed(speed) {
-    speed = Math.max(MIN_SPEED, Math.min(MAX_SPEED, speed));
-    speed = Math.round(speed * 100) / 100;
+    speed = roundSpeed(clampSpeed(speed));
 
     browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
       if (tabs[0]?.id) {
@@ -88,8 +95,7 @@
 
   // Save for all sites (global default)
   function saveGlobalSpeed(speed) {
-    speed = Math.max(MIN_SPEED, Math.min(MAX_SPEED, speed));
-    speed = Math.round(speed * 100) / 100;
+    speed = roundSpeed(clampSpeed(speed));
 
     browser.storage.local.set({ defaultSpeed: speed });
 
@@ -105,8 +111,7 @@
 
   // Set current speed
   function setSpeed(speed) {
-    speed = Math.max(MIN_SPEED, Math.min(MAX_SPEED, speed));
-    speed = Math.round(speed * 100) / 100;
+    speed = roundSpeed(clampSpeed(speed));
     currentSpeed = speed;
     updateDisplay();
     sendSpeedToTab(speed);
@@ -138,7 +143,7 @@
 
   speedInput.addEventListener('input', () => {
     const speed = parseFloat(speedInput.value);
-    if (!isNaN(speed) && speed >= MIN_SPEED && speed <= MAX_SPEED) {
+    if (!isNaN(speed) && speed >= SPEED_MIN && speed <= SPEED_MAX) {
       setSpeed(speed);
     }
   });

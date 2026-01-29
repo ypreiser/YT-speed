@@ -2,13 +2,32 @@
 (function () {
   "use strict";
 
-  // Configuration - no 1x in presets (use reset btn)
+  // Constants
+  const SPEED_MIN = 0.25;
+  const SPEED_MAX = 16;
   const SPEED_PRESETS = [
     0.25, 0.5, 0.75, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3, 4,
   ];
-  const MIN_SPEED = 0.25;
-  const MAX_SPEED = 16;
   const DEFAULT_SPEED = 1;
+
+  function clampSpeed(speed) {
+    return Math.max(SPEED_MIN, Math.min(SPEED_MAX, speed));
+  }
+
+  function roundSpeed(speed) {
+    return Math.round(speed * 100) / 100;
+  }
+
+  async function getSiteConfig(hostname) {
+    const { siteConfigs = {} } = await browser.storage.local.get('siteConfigs');
+    return siteConfigs[hostname] || null;
+  }
+
+  async function saveSiteConfig(hostname, config) {
+    const { siteConfigs = {} } = await browser.storage.local.get('siteConfigs');
+    siteConfigs[hostname] = { ...siteConfigs[hostname], ...config };
+    await browser.storage.local.set({ siteConfigs });
+  }
 
   // Site detection
   const isYouTube = location.hostname.includes('youtube.com');
@@ -25,23 +44,18 @@
   let uiCreated = false;
   let hiddenInThisTab = false;
   let container = null;
+  let observer = null;
 
   // ============ Site Config ============
 
-  async function getSiteConfig() {
-    const { siteConfigs = {} } = await browser.storage.local.get('siteConfigs');
-    return siteConfigs[hostname] || null;
-  }
-
   async function setSiteConfig(key, value) {
-    const { siteConfigs = {} } = await browser.storage.local.get('siteConfigs');
-    siteConfigs[hostname] = siteConfigs[hostname] || {};
-    siteConfigs[hostname][key] = value;
-    await browser.storage.local.set({ siteConfigs });
+    const config = await getSiteConfig(hostname) || {};
+    config[key] = value;
+    await saveSiteConfig(hostname, config);
   }
 
   async function getEffectiveSettings() {
-    const siteConfig = await getSiteConfig();
+    const siteConfig = await getSiteConfig(hostname);
     const global = await browser.storage.local.get(['defaultSpeed', 'hideGlobal', 'panelPosition']);
 
     return {
@@ -129,8 +143,7 @@
   // ============ Speed Control ============
 
   function setSpeed(speed) {
-    speed = Math.max(MIN_SPEED, Math.min(MAX_SPEED, speed));
-    speed = Math.round(speed * 100) / 100;
+    speed = roundSpeed(clampSpeed(speed));
     currentSpeed = speed;
     applySpeedToAllVideos();
     updateSpeedDisplay();
@@ -215,7 +228,7 @@
           <div class="yt-speed-label">CURRENT SPEED</div>
         </div>
         <div class="yt-speed-slider">
-          <input type="range" id="yt-speed-range" min="${MIN_SPEED}" max="${MAX_SPEED}" step="0.05" value="${currentSpeed}">
+          <input type="range" id="yt-speed-range" min="${SPEED_MIN}" max="${SPEED_MAX}" step="0.05" value="${currentSpeed}">
         </div>
         <div class="yt-speed-presets">
           ${SPEED_PRESETS.map(
@@ -225,8 +238,8 @@
           ).join("")}
         </div>
         <div class="yt-speed-custom">
-          <label>CUSTOM SPEED (${MIN_SPEED}x – ${MAX_SPEED}x)</label>
-          <input type="number" id="yt-speed-custom" min="${MIN_SPEED}" max="${MAX_SPEED}" step="0.05" value="${currentSpeed}">
+          <label>CUSTOM SPEED (${SPEED_MIN}x – ${SPEED_MAX}x)</label>
+          <input type="number" id="yt-speed-custom" min="${SPEED_MIN}" max="${SPEED_MAX}" step="0.05" value="${currentSpeed}">
         </div>
         <div class="yt-speed-actions">
           <div class="yt-speed-save-row">
@@ -316,7 +329,7 @@
     // Custom speed - sync on input
     customInput.addEventListener("input", () => {
       const speed = parseFloat(customInput.value);
-      if (!isNaN(speed) && speed >= MIN_SPEED && speed <= MAX_SPEED) {
+      if (!isNaN(speed) && speed >= SPEED_MIN && speed <= SPEED_MAX) {
         setSpeed(speed);
       }
     });
@@ -485,7 +498,7 @@
   // ============ Video Observer ============
 
   function observeVideos() {
-    const observer = new MutationObserver((mutations) => {
+    observer = new MutationObserver((mutations) => {
       let hasNewVideo = false;
       let hasPlayerControls = false;
 
@@ -535,6 +548,15 @@
     );
   }
 
+  // ============ Cleanup ============
+
+  function cleanup() {
+    if (observer) {
+      observer.disconnect();
+      observer = null;
+    }
+  }
+
   // ============ Message Listener ============
 
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -557,7 +579,7 @@
       showButton(message.scope);
     } else if (message.action === 'getVisibility') {
       (async () => {
-        const siteConfig = await getSiteConfig();
+        const siteConfig = await getSiteConfig(hostname);
         const global = await browser.storage.local.get(['hideGlobal']);
         sendResponse({
           hasVideo: hasVideo(),
@@ -604,6 +626,9 @@
     setup();
     setTimeout(setup, 1000);
     setTimeout(setup, 3000);
+
+    // Cleanup on unload
+    window.addEventListener('unload', cleanup);
 
     console.log("YouTube Speed Control loaded");
   }

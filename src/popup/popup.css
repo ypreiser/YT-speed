@@ -1,4 +1,4 @@
-@import 'shared.css';
+@import '../shared/shared.css';
 
 /* Popup-specific styles */
 body {
