@@ -248,10 +248,14 @@
 
     container = document.createElement("div");
     container.id = "yt-speed-control";
-    // Use template element to avoid innerHTML security warning
-    const template = document.createElement("template");
-    template.innerHTML = buildUITemplate();
-    container.appendChild(template.content.cloneNode(true));
+    // Use DOMParser to avoid innerHTML security warning
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(buildUITemplate(), 'text/html');
+    const fragment = document.createDocumentFragment();
+    while (doc.body.firstChild) {
+      fragment.appendChild(doc.body.firstChild);
+    }
+    container.appendChild(fragment);
 
     // Set dynamic values via DOM (safer than template interpolation)
     container.querySelector("#yt-speed-toggle").textContent = currentSpeed + "x";

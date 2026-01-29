@@ -1,11 +1,11 @@
 {
   "name": "yt-speed-control",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "YouTube Speed Control Extension",
   "scripts": {
     "test": "jest --runInBand --testPathIgnorePatterns=extension.test.js",
     "test:watch": "jest --watch --runInBand --testPathIgnorePatterns=extension.test.js",
-    "test:e2e": "jest --runInBand --testMatch=**/extension.test.js",
+    "e2e": "jest --runInBand --testMatch=**/extension.test.js",
     "lint": "web-ext lint",
     "build": "web-ext build --overwrite-dest",
     "build:dev": "node -e \"require('child_process').execSync(process.platform==='win32'?'build.bat dev':'./build.sh dev',{stdio:'inherit'})\"",
