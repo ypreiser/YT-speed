@@ -36,7 +36,7 @@
   },
   "browser_specific_settings": {
     "gecko": {
-      "id": "yt-speed-control@example.com",
+      "id": "{dd88f115-7dfc-40a5-988f-7181b32238ac}",
       "strict_min_version": "140.0",
       "data_collection_permissions": {
         "required": []
