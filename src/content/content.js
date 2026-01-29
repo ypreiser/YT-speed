@@ -248,7 +248,10 @@
 
     container = document.createElement("div");
     container.id = "yt-speed-control";
-    container.innerHTML = buildUITemplate();
+    // Use template element to avoid innerHTML security warning
+    const template = document.createElement("template");
+    template.innerHTML = buildUITemplate();
+    container.appendChild(template.content.cloneNode(true));
 
     // Set dynamic values via DOM (safer than template interpolation)
     container.querySelector("#yt-speed-toggle").textContent = currentSpeed + "x";
@@ -268,7 +271,7 @@
 
     // Build preset buttons
     const presetsContainer = container.querySelector(".yt-speed-presets");
-    presetsContainer.innerHTML = "";
+    presetsContainer.textContent = "";
     SPEED_PRESETS.forEach((speed) => {
       const btn = document.createElement("button");
       btn.className = "yt-speed-preset" + (speed === currentSpeed ? " active" : "");

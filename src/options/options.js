@@ -15,6 +15,22 @@
     return !isNaN(num) && num >= SPEED_MIN && num <= SPEED_MAX;
   }
 
+  function createSvgIcon(...paths) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("width", "14");
+    svg.setAttribute("height", "14");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "2");
+    paths.forEach(d => {
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("d", d);
+      svg.appendChild(path);
+    });
+    return svg;
+  }
+
   function validateImportData(data) {
     if (typeof data !== 'object' || data === null) return false;
     const validKeys = new Set(VALID_CONFIG_KEYS);
@@ -88,18 +104,18 @@
 
       const actionsDiv = document.createElement("div");
       actionsDiv.className = "site-config-actions";
-      actionsDiv.innerHTML = `
-        <button class="site-config-edit" title="Edit">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-          </svg>
-        </button>
-        <button class="site-config-delete" title="Delete">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-          </svg>
-        </button>`;
+
+      const editBtn = document.createElement("button");
+      editBtn.className = "site-config-edit";
+      editBtn.title = "Edit";
+      editBtn.appendChild(createSvgIcon("M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7", "M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"));
+      actionsDiv.appendChild(editBtn);
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "site-config-delete";
+      deleteBtn.title = "Delete";
+      deleteBtn.appendChild(createSvgIcon("M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"));
+      actionsDiv.appendChild(deleteBtn);
 
       const editorDiv = document.createElement("div");
       editorDiv.className = "site-config-editor";
