@@ -298,29 +298,33 @@ describeE2E('YouTube Speed Control Extension', () => {
       // Set speed for YouTube
       await helper.navigate(TEST_URLS.youtube);
       await helper.sleep(3000);
-      await helper.waitForExtensionUI(10000);
+      const ytUI1 = await helper.waitForExtensionUI(15000);
+      expect(ytUI1).toBe(true);
       await helper.clickPreset(2);
       await helper.clickSaveForSite();
 
       // Set different speed for Vimeo
       await helper.navigate(TEST_URLS.vimeo);
-      await helper.sleep(3000);
-      await helper.waitForExtensionUI(10000);
+      await helper.sleep(5000); // Vimeo loads slowly
+      const vimeoUI1 = await helper.waitForExtensionUI(15000);
+      expect(vimeoUI1).toBe(true);
       await helper.clickPreset(1.5);
       await helper.clickSaveForSite();
 
       // Go back to YouTube - should have its own saved speed
       await helper.navigate(TEST_URLS.youtube);
       await helper.sleep(3000);
-      await helper.waitForExtensionUI(10000);
+      const ytUI2 = await helper.waitForExtensionUI(15000);
+      expect(ytUI2).toBe(true);
 
       const ytSpeed = await helper.getDisplayedSpeed();
       expect(ytSpeed).toBeCloseTo(2, 1);
 
       // Check Vimeo again
       await helper.navigate(TEST_URLS.vimeo);
-      await helper.sleep(3000);
-      await helper.waitForExtensionUI(10000);
+      await helper.sleep(5000);
+      const vimeoUI2 = await helper.waitForExtensionUI(15000);
+      expect(vimeoUI2).toBe(true);
 
       const vimeoSpeed = await helper.getDisplayedSpeed();
       expect(vimeoSpeed).toBeCloseTo(1.5, 1);
@@ -337,13 +341,14 @@ describeE2E('YouTube Speed Control Extension', () => {
     test('hide dropdown appears when hide toggle clicked', async () => {
       await helper.openPanel();
 
-      const hideToggle = await helper.driver.findElement(By.css(SELECTORS.hideToggle));
-      await hideToggle.click();
+      // Use JS click to avoid scroll/visibility issues
+      await helper.driver.executeScript(`document.querySelector('${SELECTORS.hideToggle}').click()`);
       await helper.sleep(200);
 
-      const hideMenu = await helper.driver.findElement(By.css(SELECTORS.hideMenu));
-      const menuVisible = await hideMenu.getAttribute('class');
-      expect(menuVisible).toContain('visible');
+      const menuVisible = await helper.driver.executeScript(
+        `return document.querySelector('${SELECTORS.hideMenu}').classList.contains('visible')`
+      );
+      expect(menuVisible).toBe(true);
     });
   });
 
@@ -356,9 +361,12 @@ describeE2E('YouTube Speed Control Extension', () => {
 
     test('speed is clamped to min 0.25', async () => {
       await helper.openPanel();
-      const input = await helper.driver.findElement(By.css(SELECTORS.customInput));
-      await input.clear();
-      await input.sendKeys('0.1');
+      // Use JS to set value and trigger input event
+      await helper.driver.executeScript(`
+        const input = document.querySelector('${SELECTORS.customInput}');
+        input.value = 0.1;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      `);
       await helper.sleep(500);
 
       // Speed should not go below min
@@ -368,9 +376,12 @@ describeE2E('YouTube Speed Control Extension', () => {
 
     test('speed is clamped to max 16', async () => {
       await helper.openPanel();
-      const input = await helper.driver.findElement(By.css(SELECTORS.customInput));
-      await input.clear();
-      await input.sendKeys('20');
+      // Use JS to set value and trigger input event
+      await helper.driver.executeScript(`
+        const input = document.querySelector('${SELECTORS.customInput}');
+        input.value = 20;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      `);
       await helper.sleep(500);
 
       // Note: Input validation may prevent setting invalid values
@@ -414,5 +425,157 @@ describeE2E('Twitch Support', () => {
 
     const visible = await helper.waitForExtensionUI(10000);
     expect(visible).toBe(true);
+  });
+});
+
+// Mobile viewport tests
+describeE2E('Mobile View', () => {
+  let helper;
+  let launchError = null;
+
+  beforeAll(async () => {
+    helper = new ExtensionHelper();
+    try {
+      await helper.launch();
+    } catch (e) {
+      launchError = e;
+    }
+  });
+
+  afterAll(async () => {
+    if (helper) {
+      try {
+        await helper.close();
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+    }
+  });
+
+  beforeEach(() => {
+    if (launchError) {
+      throw new Error(`Browser launch failed: ${launchError.message}`);
+    }
+  });
+
+  test('UI visible at mobile viewport (375x667)', async () => {
+    await helper.setViewport(375, 667);
+    await helper.navigate(TEST_URLS.youtube);
+    await helper.sleep(3000);
+
+    const visible = await helper.waitForExtensionUI(10000);
+    expect(visible).toBe(true);
+
+    const uiVisible = await helper.isUIVisible();
+    expect(uiVisible).toBe(true);
+  });
+
+  test('panel opens at mobile viewport', async () => {
+    await helper.setViewport(375, 667);
+    await helper.navigate(TEST_URLS.youtube);
+    await helper.sleep(3000);
+    await helper.waitForExtensionUI(10000);
+
+    await helper.openPanel();
+
+    const panelVisible = await helper.driver.executeScript(
+      `return document.querySelector('${SELECTORS.panel}').classList.contains('visible')`
+    );
+    expect(panelVisible).toBe(true);
+  });
+
+  test('speed controls work at mobile viewport', async () => {
+    await helper.setViewport(375, 667);
+    await helper.navigate(TEST_URLS.youtube);
+    await helper.sleep(3000);
+    await helper.waitForExtensionUI(10000);
+
+    await helper.clickPreset(1.5);
+    await helper.sleep(300);
+
+    const rate = await helper.getPlaybackRate();
+    expect(rate).toBeCloseTo(1.5, 1);
+  });
+
+  test('UI stays on screen when viewport resized', async () => {
+    // Start at desktop size
+    await helper.setViewport(1280, 800);
+    await helper.navigate(TEST_URLS.youtube);
+    await helper.sleep(3000);
+    await helper.waitForExtensionUI(10000);
+
+    // Resize to mobile
+    await helper.setViewport(375, 667);
+    await helper.sleep(500);
+
+    // UI should still be visible and on screen
+    const visible = await helper.isUIVisible();
+    expect(visible).toBe(true);
+
+    // Check container is within viewport
+    const inViewport = await helper.driver.executeScript(`
+      const el = document.querySelector('${SELECTORS.container}');
+      const rect = el.getBoundingClientRect();
+      return rect.left >= 0 && rect.top >= 0 &&
+             rect.right <= window.innerWidth && rect.bottom <= window.innerHeight;
+    `);
+    expect(inViewport).toBe(true);
+  });
+
+  test('UI visible at tablet viewport (768x1024)', async () => {
+    await helper.setViewport(768, 1024);
+    await helper.navigate(TEST_URLS.youtube);
+    await helper.sleep(3000);
+
+    const visible = await helper.waitForExtensionUI(10000);
+    expect(visible).toBe(true);
+  });
+
+  test('UI stays visible when rotating portrait to landscape', async () => {
+    // Start in portrait
+    await helper.setViewport(375, 667);
+    await helper.navigate(TEST_URLS.youtube);
+    await helper.sleep(3000);
+    await helper.waitForExtensionUI(10000);
+
+    // Rotate to landscape
+    await helper.setViewport(667, 375);
+    await helper.sleep(500);
+
+    const visible = await helper.isUIVisible();
+    expect(visible).toBe(true);
+
+    // Check container is within viewport
+    const inViewport = await helper.driver.executeScript(`
+      const el = document.querySelector('${SELECTORS.container}');
+      const rect = el.getBoundingClientRect();
+      return rect.left >= 0 && rect.top >= 0 &&
+             rect.right <= window.innerWidth && rect.bottom <= window.innerHeight;
+    `);
+    expect(inViewport).toBe(true);
+  });
+
+  test('UI stays visible when rotating landscape to portrait', async () => {
+    // Start in landscape
+    await helper.setViewport(667, 375);
+    await helper.navigate(TEST_URLS.youtube);
+    await helper.sleep(3000);
+    await helper.waitForExtensionUI(10000);
+
+    // Rotate to portrait
+    await helper.setViewport(375, 667);
+    await helper.sleep(500);
+
+    const visible = await helper.isUIVisible();
+    expect(visible).toBe(true);
+
+    // Check container is within viewport
+    const inViewport = await helper.driver.executeScript(`
+      const el = document.querySelector('${SELECTORS.container}');
+      const rect = el.getBoundingClientRect();
+      return rect.left >= 0 && rect.top >= 0 &&
+             rect.right <= window.innerWidth && rect.bottom <= window.innerHeight;
+    `);
+    expect(inViewport).toBe(true);
   });
 });

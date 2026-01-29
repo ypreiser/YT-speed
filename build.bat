@@ -31,9 +31,9 @@ REM Clean old builds
 del /f yt-speed*.xpi 2>nul
 del /f yt-speed*.zip 2>nul
 
-REM Build
-powershell -Command "Compress-Archive -Path manifest.json, background.js, content.js, popup.js, options.js, shared.css, content.css, popup.css, options.css, popup.html, options.html, icons -DestinationPath 'yt-speed-%BUILD_VER%.zip' -Force"
-copy "yt-speed-%BUILD_VER%.zip" "yt-speed-%BUILD_VER%.xpi" >nul
+REM Build with forward slashes for Firefox compatibility
+powershell -NoProfile -Command "Add-Type -A System.IO.Compression.FileSystem; $z=[IO.Compression.ZipFile]::Open('yt-speed-%BUILD_VER%.xpi','Create'); $p=(gl).Path; $e=$z.CreateEntry('manifest.json'); $s=$e.Open(); $b=[IO.File]::ReadAllBytes('manifest.json'); $s.Write($b,0,$b.Length); $s.Close(); gci -R -File src,icons|%%{$r=$_.FullName.Substring($p.Length+1).Replace('\','/'); $e=$z.CreateEntry($r); $s=$e.Open(); $b=[IO.File]::ReadAllBytes($_.FullName); $s.Write($b,0,$b.Length); $s.Close()}; $z.Dispose()"
+copy "yt-speed-%BUILD_VER%.xpi" "yt-speed-%BUILD_VER%.zip" >nul
 
 echo Built yt-speed v%BUILD_VER%
 dir /b yt-speed-%BUILD_VER%.*

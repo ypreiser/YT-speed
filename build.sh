@@ -32,7 +32,7 @@ esac
 rm -f yt-speed*.zip yt-speed*.xpi
 
 # Build
-powershell -Command "Compress-Archive -Path 'manifest.json','background.js','content.js','popup.js','options.js','shared.css','content.css','popup.css','options.css','popup.html','options.html','icons' -DestinationPath 'yt-speed-${BUILD_VER}.zip' -Force"
+powershell -Command "Compress-Archive -Path 'manifest.json','src','icons' -DestinationPath 'yt-speed-${BUILD_VER}.zip' -Force"
 
 cp "yt-speed-${BUILD_VER}.zip" "yt-speed-${BUILD_VER}.xpi"
 

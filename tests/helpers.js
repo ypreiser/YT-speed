@@ -157,8 +157,8 @@ class ExtensionHelper {
    * Open the speed panel
    */
   async openPanel() {
-    const toggle = await this.driver.findElement(By.css(SELECTORS.toggleBtn));
-    await toggle.click();
+    // Use JS click to avoid scroll/visibility issues
+    await this.driver.executeScript(`document.querySelector('${SELECTORS.toggleBtn}').click()`);
     await this.sleep(300);
   }
 
@@ -166,8 +166,8 @@ class ExtensionHelper {
    * Close the speed panel
    */
   async closePanel() {
-    const closeBtn = await this.driver.findElement(By.css(SELECTORS.closeBtn));
-    await closeBtn.click();
+    // Use JS click to avoid scroll/visibility issues
+    await this.driver.executeScript(`document.querySelector('${SELECTORS.closeBtn}').click()`);
     await this.sleep(300);
   }
 
@@ -247,8 +247,8 @@ class ExtensionHelper {
    * Click Save for Site button
    */
   async clickSaveForSite() {
-    const btn = await this.driver.findElement(By.css(SELECTORS.saveSiteBtn));
-    await btn.click();
+    // Use JS click to avoid scroll/visibility issues
+    await this.driver.executeScript(`document.querySelector('${SELECTORS.saveSiteBtn}').click()`);
     await this.sleep(1000); // Wait for save animation
   }
 
@@ -256,8 +256,8 @@ class ExtensionHelper {
    * Click Save for All button
    */
   async clickSaveForAll() {
-    const btn = await this.driver.findElement(By.css(SELECTORS.saveGlobalBtn));
-    await btn.click();
+    // Use JS click to avoid scroll/visibility issues
+    await this.driver.executeScript(`document.querySelector('${SELECTORS.saveGlobalBtn}').click()`);
     await this.sleep(1000);
   }
 
@@ -265,8 +265,8 @@ class ExtensionHelper {
    * Click Reset to 1x button
    */
   async clickReset() {
-    const btn = await this.driver.findElement(By.css(SELECTORS.resetBtn));
-    await btn.click();
+    // Use JS click to avoid scroll/visibility issues
+    await this.driver.executeScript(`document.querySelector('${SELECTORS.resetBtn}').click()`);
     await this.sleep(200);
   }
 
@@ -307,8 +307,8 @@ class ExtensionHelper {
     // Alternative: Click settings button if panel is open
     try {
       await this.openPanel();
-      const settingsBtn = await this.driver.findElement(By.css(SELECTORS.settingsBtn));
-      await settingsBtn.click();
+      // Use JS click to avoid scroll/visibility issues
+      await this.driver.executeScript(`document.querySelector('${SELECTORS.settingsBtn}').click()`);
       await this.sleep(1000);
 
       // Switch to new tab
@@ -336,6 +336,22 @@ class ExtensionHelper {
    */
   async sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Set viewport size (for mobile testing)
+   */
+  async setViewport(width, height) {
+    await this.driver.manage().window().setRect({ width, height });
+    await this.sleep(300);
+  }
+
+  /**
+   * Get viewport size
+   */
+  async getViewport() {
+    const { width, height } = await this.driver.manage().window().getRect();
+    return { width, height };
   }
 
   /**
