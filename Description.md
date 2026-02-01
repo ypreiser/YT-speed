@@ -2,7 +2,7 @@
 
 ## Short Description (250 chars max)
 
-Control video playback speed on any website. Set per-site defaults, use speeds up to 16x, and enjoy a draggable floating panel. Works on YouTube, Vimeo, Twitch, and all HTML5 videos.
+Control video playback speed on any site with HTML5 video. Set per-site or global defaults, use speeds 0.25x to 16x, and enjoy a draggable floating panel. Works on YouTube, Vimeo, Twitch, and more.
 
 ## Full Description
 
@@ -18,8 +18,8 @@ Works on YouTube, Vimeo, Twitch, and any site with HTML5 video elements.
 **📱 Mobile Ready**
 Full support for Firefox for Android with touch-friendly controls.
 
-**⚡ Per-Site Settings**
-Set different default speeds for different sites. Watch tutorials at 2x on YouTube while keeping Twitch streams at 1x.
+**⚡ Per-Site & Global Defaults**
+Set different default speeds for different sites. Watch tutorials at 2x on YouTube while keeping Twitch streams at 1x. Global default applies when no site-specific setting exists.
 
 **🎯 Draggable Floating Panel**
 A sleek, draggable speed control button appears on video pages. Position it anywhere - your preference is saved per-site.
@@ -32,7 +32,7 @@ A sleek, draggable speed control button appears on video pages. Position it anyw
 - Reset to 1x with one click
 
 **👁️ Hide When You Want**
-Hide the speed button per-tab, per-site, or globally. Access settings anytime via the toolbar popup or options page.
+Hide the speed button for this tab, this site, or all sites. Access settings anytime via the toolbar popup or options page.
 
 **💾 Backup & Restore**
 Export all your settings to a file. Import them on another device or after reinstalling.
@@ -43,7 +43,7 @@ Export all your settings to a file. Import them on another device or after reins
 2. Look for the floating speed button
 3. Click to open the panel
 4. Adjust speed with slider, presets, or custom input
-5. Click "Save for Site" to remember your preference
+5. Click "Save for Site" to save as default for this site, or "Save for All" for global default
 
 ### Privacy
 

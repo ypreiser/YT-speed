@@ -1,15 +1,16 @@
 # YouTube Speed Control
 
-A lightweight Firefox extension for controlling video playback speed on any website. Works on YouTube, Vimeo, Twitch, and any site with HTML5 video.
+A lightweight Firefox extension for controlling video playback speed on any website with HTML5 video.
 
 ## Features
 
 - **Universal Video Support** - Works on YouTube, Vimeo, Twitch, and any HTML5 video
-- **Per-Site Settings** - Different default speeds for different sites
+- **Per-Site Defaults** - Save different default speeds for different sites
+- **Global Default** - Fallback speed when no site-specific setting exists
 - **Extended Speed Range** - 0.25x to 16x (beyond YouTube's 2x limit)
 - **Draggable UI** - Floating panel that remembers position per-site
-- **Quick Presets** - One-tap access to common speeds
-- **Hide Options** - Hide button per-tab, per-site, or globally
+- **Quick Presets** - One-tap access to common speeds (0.25x - 4x)
+- **Hide Options** - Hide button for this tab, this site, or all sites
 - **Export/Import** - Backup and restore all settings
 - **Mobile-Friendly** - Works on Firefox for Android
 
@@ -41,18 +42,18 @@ A lightweight Firefox extension for controlling video playback speed on any webs
 - **Slider** - Smooth speed adjustment
 - **Presets** - Quick access to common speeds (0.25x - 4x)
 - **Custom input** - Enter any speed 0.25x - 16x
-- **Save for Site** - Save speed for current site
-- **Save for All** - Save as global default
-- **Reset to 1x** - Reset speed and default
-- **Hide button** - Hide per-tab, per-site, or globally
+- **Save for Site** - Save speed as default for current site
+- **Save for All** - Save speed as global default (all sites)
+- **Reset to 1x** - Reset speed and site default to 1x
+- **Hide button** - Hide for this tab, this site, or all sites
 - **Settings** - Open options page
 
 ### Options Page
 
-- Global default speed
-- Global hide toggle
-- Per-site configuration list (edit/delete)
-- Export/import settings
+- Global default speed (used when no site-specific default)
+- Global hide toggle (hides button on all sites)
+- Per-site configuration list (edit speed, visibility; delete)
+- Export/import settings (JSON backup)
 - Reset all settings
 
 ### YouTube Player Integration
@@ -82,8 +83,10 @@ YT-speed/
 
 ```bash
 npm install
-npm test                           # All tests
-npm test -- --testPathPattern=unit # Unit tests only
+npm test              # Unit tests
+npm run e2e           # E2E tests (prefers .xpi if exists)
+npm run e2e:source    # E2E tests from source
+npm run e2e:xpi       # E2E tests from built .xpi
 ```
 
 Requires Firefox for E2E tests.
