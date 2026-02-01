@@ -171,3 +171,60 @@ describe('Settings Export/Import Format', () => {
     expect(parsed.siteConfigs['youtube.com'].defaultSpeed).toBe(2);
   });
 });
+
+describe('Drag Bounds Calculation', () => {
+  const TOGGLE_SIZE = 40;
+  const PANEL_GAP = 50; // panel is 50px below toggle
+
+  function calcDragBounds(panelVisible, panelWidth, panelHeight, windowWidth, windowHeight) {
+    const w = panelVisible ? panelWidth : TOGGLE_SIZE;
+    const h = panelVisible ? PANEL_GAP + panelHeight : TOGGLE_SIZE;
+    return {
+      maxX: windowWidth - w,
+      maxY: windowHeight - h
+    };
+  }
+
+  function clampPosition(x, y, bounds) {
+    return {
+      x: Math.max(0, Math.min(x, bounds.maxX)),
+      y: Math.max(0, Math.min(y, bounds.maxY))
+    };
+  }
+
+  test('allows full movement when panel closed', () => {
+    const bounds = calcDragBounds(false, 300, 400, 1000, 800);
+    expect(bounds.maxX).toBe(960); // 1000 - 40
+    expect(bounds.maxY).toBe(760); // 800 - 40
+  });
+
+  test('restricts movement when panel open', () => {
+    const bounds = calcDragBounds(true, 300, 400, 1000, 800);
+    expect(bounds.maxX).toBe(700); // 1000 - 300
+    expect(bounds.maxY).toBe(350); // 800 - (50 + 400)
+  });
+
+  test('clamps position to stay on screen', () => {
+    const bounds = calcDragBounds(true, 300, 400, 1000, 800);
+
+    // trying to go off right edge
+    expect(clampPosition(800, 100, bounds)).toEqual({ x: 700, y: 100 });
+
+    // trying to go off bottom
+    expect(clampPosition(100, 500, bounds)).toEqual({ x: 100, y: 350 });
+
+    // trying to go negative
+    expect(clampPosition(-50, -50, bounds)).toEqual({ x: 0, y: 0 });
+  });
+
+  test('handles small viewport with panel open', () => {
+    const bounds = calcDragBounds(true, 300, 400, 320, 500);
+    expect(bounds.maxX).toBe(20); // 320 - 300
+    expect(bounds.maxY).toBe(50); // 500 - 450
+  });
+
+  test('valid position stays unchanged', () => {
+    const bounds = calcDragBounds(true, 300, 400, 1000, 800);
+    expect(clampPosition(100, 100, bounds)).toEqual({ x: 100, y: 100 });
+  });
+});

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap");
 
 /* CSS Variables */
 :root {
@@ -69,7 +69,11 @@
   background: var(--yt-bg-secondary);
   font-size: 12px;
   font-weight: 500;
-  font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family:
+    "Geist",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
   color: var(--yt-text-secondary);
   cursor: pointer;
   transition: all 0.15s ease;
@@ -122,7 +126,9 @@
 
 .yt-speed-slider input[type="range"]::-webkit-slider-thumb:hover {
   transform: scale(1.15);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5), 0 0 0 4px var(--yt-accent-glow);
+  box-shadow:
+    0 2px 12px rgba(0, 0, 0, 0.5),
+    0 0 0 4px var(--yt-accent-glow);
 }
 
 .yt-speed-slider input[type="range"]::-moz-range-thumb {
@@ -184,7 +190,11 @@
   border-radius: 12px;
   font-size: 13px;
   font-weight: 600;
-  font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family:
+    "Geist",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -240,21 +250,21 @@
 
 /* Close button */
 .yt-speed-close {
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--yt-bg-secondary);
-  border: 1px solid var(--yt-border);
+  background: var(--yt-accent);
+  border: none;
   border-radius: 8px;
-  font-size: 16px;
+  font-size: 20px;
   cursor: pointer;
-  color: var(--yt-text-secondary);
+  color: var(--yt-text-primary);
   transition: all 0.15s ease;
 }
 
 .yt-speed-close:hover {
-  background: var(--yt-bg-hover);
-  color: var(--yt-text-primary);
+  background: #c82333;
+  color: #fff;
 }

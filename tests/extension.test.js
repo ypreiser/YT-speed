@@ -25,14 +25,18 @@ jest.setTimeout(60000);
 function isFirefoxAvailable() {
   // Check common Firefox paths
   const firefoxPaths = [
-    'C:\\Program Files\\Mozilla Firefox\\firefox.exe',
-    'C:\\Program Files (x86)\\Mozilla Firefox\\firefox.exe',
+    'C:/Program Files/Mozilla Firefox/firefox.exe',
+    'C:/Program Files (x86)/Mozilla Firefox/firefox.exe',
     '/usr/bin/firefox',
     '/Applications/Firefox.app/Contents/MacOS/firefox',
   ];
   for (const fp of firefoxPaths) {
-    if (fs.existsSync(fp)) {
-      return true;
+    try {
+      if (fs.existsSync(fp)) {
+        return true;
+      }
+    } catch {
+      // Ignore errors
     }
   }
   // Fallback: check PATH

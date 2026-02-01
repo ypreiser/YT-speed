@@ -6,23 +6,46 @@
 const { Builder, By, until, Key } = require('selenium-webdriver');
 const firefox = require('selenium-webdriver/firefox');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, execSync } = require('child_process');
 const fs = require('fs');
+
+// Get geckodriver path - download if needed (must use execSync to avoid Jest dynamic import issues)
+let geckodriverPath;
+try {
+  geckodriverPath = execSync(
+    'node -e "require(\'geckodriver\').download().then(p => process.stdout.write(p))"',
+    { encoding: 'utf8', timeout: 60000 }
+  ).trim();
+} catch (e) {
+  console.warn('Failed to get geckodriver path:', e.message);
+}
 
 // Extension source path
 const EXTENSION_DIR = path.resolve(__dirname, '..');
 
-// Find .xpi file or use directory
+// Find .xpi file or use directory based on TEST_MODE env var
 function getExtensionPath() {
+  const mode = process.env.TEST_MODE;
+
+  if (mode === 'source') {
+    return EXTENSION_DIR;
+  }
+
   const files = fs.readdirSync(EXTENSION_DIR);
   const xpi = files.find(f => f.endsWith('.xpi'));
-  if (xpi) {
+
+  if (mode === 'xpi') {
+    if (!xpi) throw new Error('No .xpi file found. Run build first.');
     return path.join(EXTENSION_DIR, xpi);
   }
-  return EXTENSION_DIR;
+
+  // Default: prefer xpi, fallback to source
+  return xpi ? path.join(EXTENSION_DIR, xpi) : EXTENSION_DIR;
 }
 
 const EXTENSION_PATH = getExtensionPath();
+console.log('TEST_MODE:', process.env.TEST_MODE);
+console.log('EXTENSION_PATH:', EXTENSION_PATH);
 
 // Test URLs
 const TEST_URLS = {
@@ -83,10 +106,12 @@ class ExtensionHelper {
       options.addArguments('-headless');
     }
 
-    // Build driver
+    // Build driver with explicit geckodriver path
+    const service = new firefox.ServiceBuilder(geckodriverPath);
     this.driver = await new Builder()
       .forBrowser('firefox')
       .setFirefoxOptions(options)
+      .setFirefoxService(service)
       .build();
 
     // Load extension as temporary add-on
@@ -109,9 +134,12 @@ class ExtensionHelper {
     try {
       // Install extension as temporary add-on
       // This works with unsigned extensions in Firefox
+      console.log('Installing addon from:', EXTENSION_PATH);
       await this.driver.installAddon(EXTENSION_PATH, true);
+      console.log('Addon installed successfully');
     } catch (e) {
       // Extension load failed - tests will fail to find UI elements
+      console.error('Extension load failed:', e.message);
       this.extensionLoadError = e.message;
     }
   }

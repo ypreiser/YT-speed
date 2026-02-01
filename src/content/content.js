@@ -310,6 +310,21 @@
       }
       uiVisible = !uiVisible;
       panel.classList.toggle("visible", uiVisible);
+      if (uiVisible) {
+        // Keep panel on screen after render
+        requestAnimationFrame(() => {
+          const cntRect = cnt.getBoundingClientRect();
+          const panelRect = panel.getBoundingClientRect();
+          const totalWidth = panelRect.width;
+          const totalHeight = panelRect.bottom - cntRect.top;
+          let x = Math.min(cntRect.left, window.innerWidth - totalWidth - 8);
+          let y = Math.min(cntRect.top, window.innerHeight - totalHeight - 8);
+          x = Math.max(8, x);
+          y = Math.max(8, y);
+          cnt.style.left = x + "px";
+          cnt.style.top = y + "px";
+        });
+      }
     });
 
     // Close panel
@@ -423,6 +438,7 @@
   function attachDragListeners(container) {
     const toggle = document.getElementById("yt-speed-toggle");
 
+    // Mouse events
     toggle.addEventListener("mousedown", (e) => {
       if (e.button !== 0) return;
       isDragging = true;
@@ -435,11 +451,15 @@
     document.addEventListener("mousemove", (e) => {
       if (!isDragging) return;
       didDrag = true;
+      const panel = document.getElementById("yt-speed-panel");
+      const panelVisible = panel && panel.classList.contains("visible");
+      // Panel is 50px below toggle, so total height = 50 + panel height
+      const w = panelVisible ? panel.offsetWidth : 40;
+      const h = panelVisible ? 50 + panel.offsetHeight : 40;
       let x = e.clientX - dragOffset.x;
       let y = e.clientY - dragOffset.y;
-      // Bounds check
-      x = Math.max(0, Math.min(x, window.innerWidth - container.offsetWidth));
-      y = Math.max(0, Math.min(y, window.innerHeight - container.offsetHeight));
+      x = Math.max(0, Math.min(x, window.innerWidth - w));
+      y = Math.max(0, Math.min(y, window.innerHeight - h));
       container.style.left = x + "px";
       container.style.top = y + "px";
     });
@@ -451,17 +471,50 @@
       }
     });
 
-    window.addEventListener("resize", () => {
-      // Snap back if off-screen
-      const rect = container.getBoundingClientRect();
-      if (rect.right > window.innerWidth || rect.bottom > window.innerHeight || rect.left < 0 || rect.top < 0) {
-        const safeX = Math.max(0, Math.min(rect.left, window.innerWidth - container.offsetWidth));
-        const safeY = Math.max(0, Math.min(rect.top, window.innerHeight - container.offsetHeight));
-        container.style.left = safeX + "px";
-        container.style.top = safeY + "px";
-        savePosition(container);
+    // Touch events
+    toggle.addEventListener("touchstart", (e) => {
+      const touch = e.touches[0];
+      isDragging = true;
+      didDrag = false;
+      dragOffset.x = touch.clientX - container.offsetLeft;
+      dragOffset.y = touch.clientY - container.offsetTop;
+    }, { passive: true });
+
+    document.addEventListener("touchmove", (e) => {
+      if (!isDragging) return;
+      didDrag = true;
+      const panel = document.getElementById("yt-speed-panel");
+      const panelVisible = panel && panel.classList.contains("visible");
+      const w = panelVisible ? panel.offsetWidth : 40;
+      const h = panelVisible ? 50 + panel.offsetHeight : 40;
+      const touch = e.touches[0];
+      let x = touch.clientX - dragOffset.x;
+      let y = touch.clientY - dragOffset.y;
+      x = Math.max(0, Math.min(x, window.innerWidth - w));
+      y = Math.max(0, Math.min(y, window.innerHeight - h));
+      container.style.left = x + "px";
+      container.style.top = y + "px";
+    }, { passive: true });
+
+    document.addEventListener("touchend", () => {
+      if (isDragging) {
+        isDragging = false;
+        if (didDrag) savePosition(container);
       }
     });
+
+    window.addEventListener("resize", () => snapToScreen(container));
+  }
+
+  function snapToScreen(container, save = true) {
+    const rect = container.getBoundingClientRect();
+    const safeX = Math.max(0, Math.min(rect.left, window.innerWidth - container.offsetWidth));
+    const safeY = Math.max(0, Math.min(rect.top, window.innerHeight - container.offsetHeight));
+    if (safeX !== rect.left || safeY !== rect.top) {
+      container.style.left = safeX + "px";
+      container.style.top = safeY + "px";
+      if (save) savePosition(container);
+    }
   }
 
   function savePosition(cnt) {
