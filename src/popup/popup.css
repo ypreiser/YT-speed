@@ -8,6 +8,7 @@ body {
   border-radius: 20px;
   font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
+  overflow: hidden;
 }
 
 /* Speed display - smaller for popup */

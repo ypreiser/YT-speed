@@ -225,6 +225,7 @@
         <div class="yt-speed-slider">
           <input type="range" id="yt-speed-range" step="0.05">
         </div>
+        <button class="yt-speed-action yt-speed-reset" id="yt-speed-reset">Reset to 1x</button>
         <div class="yt-speed-presets"></div>
         <div class="yt-speed-custom">
           <label></label>
@@ -235,7 +236,6 @@
             <button class="yt-speed-action" id="yt-speed-save-site">Save for Site</button>
             <button class="yt-speed-action" id="yt-speed-save-global">Save for All</button>
           </div>
-          <button class="yt-speed-action yt-speed-reset" id="yt-speed-reset">Reset to 1x</button>
         </div>
         <div class="yt-speed-info"></div>
       </div>

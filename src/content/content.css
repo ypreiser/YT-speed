@@ -223,3 +223,11 @@
 .yt-speed-player-text {
   font-family: 'YouTube Noto', Roboto, Arial, sans-serif;
 }
+
+/* Landscape mobile - enable scrolling when viewport height is limited */
+@media (max-height: 500px) and (orientation: landscape) {
+  #yt-speed-panel {
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+  }
+}

@@ -214,13 +214,14 @@
   color: white;
 }
 
-/* Reset button - darker style */
+/* Reset button - blue style */
 .yt-speed-reset {
-  background: var(--yt-bg-darker);
+  background: #1a73e8;
+  margin-bottom: 10px;
 }
 
 .yt-speed-reset:hover {
-  background: var(--yt-bg-secondary);
+  background: #1557b0;
 }
 
 /* Info text */
