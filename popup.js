@@ -2,6 +2,9 @@
 (function() {
   'use strict';
 
+  // Browser API compatibility layer (Chrome uses 'chrome', Firefox uses 'browser')
+  const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
+
   const MIN_SPEED = 0.25;
   const MAX_SPEED = 16;
   const DEFAULT_SPEED = 1;
@@ -18,7 +21,7 @@
 
   // Load saved settings
   function loadSettings() {
-    browser.storage.local.get(['defaultSpeed']).then((result) => {
+    browserAPI.storage.local.get(['defaultSpeed']).then((result) => {
       if (result.defaultSpeed) {
         currentDefaultSpeed = result.defaultSpeed;
         updateDisplay();
@@ -33,7 +36,7 @@
     speed = Math.max(MIN_SPEED, Math.min(MAX_SPEED, speed));
     speed = Math.round(speed * 100) / 100;
 
-    browser.storage.local.set({ defaultSpeed: speed }).then(() => {
+    browserAPI.storage.local.set({ defaultSpeed: speed }).then(() => {
       currentDefaultSpeed = speed;
       updateDisplay();
       showStatus('Default speed saved!', 'success');
