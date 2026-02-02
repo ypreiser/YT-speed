@@ -1,14 +1,36 @@
-@import '../shared/shared.css';
+@import "../shared/shared.css";
 
 /* Popup-specific styles */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 body {
-  width: 300px;
+  width: 320px;
   padding: 16px;
   background: var(--yt-bg-primary);
   border-radius: 20px;
-  font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family:
+    "Geist",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none; /* Firefox */
+  margin: 0;
+}
+
+body::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+/* Constrain all content */
+body > * {
+  max-width: 100%;
 }
 
 /* Speed display - smaller for popup */
@@ -78,4 +100,114 @@ body {
   background: var(--yt-bg-hover);
   color: var(--yt-text-primary);
   border-color: var(--yt-accent);
+}
+
+/* Mobile popup - Firefox Android shows popup full-screen (viewport > body width) */
+@media (min-width: 321px) and (max-width: 600px) {
+  body {
+    width: 100%;
+    min-height: 100vh;
+    padding: 20px;
+    border-radius: 0;
+    overflow-y: auto;
+  }
+
+  /* Prevent slider thumb cut-off */
+  .yt-speed-slider {
+    padding: 0 12px;
+  }
+
+  /* Larger touch targets for presets */
+  .yt-speed-preset {
+    padding: 14px 8px;
+    font-size: 14px;
+  }
+
+  /* Larger action buttons */
+  .yt-speed-action {
+    padding: 16px;
+    font-size: 15px;
+  }
+
+  /* Larger custom input */
+  .yt-speed-custom input[type="number"] {
+    padding: 14px;
+    font-size: 16px;
+  }
+
+  /* More spacing */
+  .yt-speed-display-container {
+    margin-bottom: 20px;
+  }
+
+  .yt-speed-current {
+    font-size: 52px;
+  }
+}
+
+/* Landscape mobile - compact layout with scroll */
+@media (max-height: 500px) and (orientation: landscape) {
+  body {
+    width: 100%;
+    height: 100vh;
+    padding: 12px 20px;
+    border-radius: 0;
+    overflow-y: auto;
+  }
+
+  /* Smaller speed display */
+  .yt-speed-current {
+    font-size: 36px;
+  }
+
+  .yt-speed-display-container {
+    margin-bottom: 10px;
+  }
+
+  /* Compact header */
+  .yt-speed-header {
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+  }
+
+  /* Tighter slider */
+  .yt-speed-slider {
+    margin-bottom: 10px;
+    padding: 0 12px;
+  }
+
+  /* Smaller presets */
+  .yt-speed-presets {
+    margin-bottom: 10px;
+    gap: 4px;
+  }
+
+  .yt-speed-preset {
+    padding: 8px 4px;
+    font-size: 11px;
+  }
+
+  /* Compact custom input */
+  .yt-speed-custom {
+    margin-bottom: 10px;
+  }
+
+  .yt-speed-custom input[type="number"] {
+    padding: 10px;
+  }
+
+  /* Smaller action buttons */
+  .yt-speed-action {
+    padding: 10px;
+  }
+
+  .yt-speed-reset {
+    margin-bottom: 8px;
+  }
+
+  /* Compact footer */
+  .yt-speed-info {
+    margin-top: 8px;
+    padding-top: 8px;
+  }
 }
