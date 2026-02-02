@@ -352,6 +352,14 @@ describeE2E('YouTube Speed Control Extension', () => {
           return document.getElementById('hide-global').checked;
         `);
         expect(newState).toBe(!initialState);
+
+        // Reset to unchecked to not affect subsequent tests
+        await helper.driver.executeScript(`
+          const cb = document.getElementById('hide-global');
+          cb.checked = false;
+          cb.dispatchEvent(new Event('change', { bubbles: true }));
+        `);
+        await helper.sleep(300);
       } catch (e) {
         console.log('Options page test skipped - page not accessible');
       }

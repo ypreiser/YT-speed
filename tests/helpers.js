@@ -163,6 +163,11 @@ class ExtensionHelper {
         until.elementLocated(By.css(SELECTORS.container)),
         timeout
       );
+      // Also wait for toggle button to be clickable
+      await this.driver.wait(
+        until.elementLocated(By.css(SELECTORS.toggleBtn)),
+        5000
+      );
       return true;
     } catch (e) {
       return false;
@@ -185,7 +190,8 @@ class ExtensionHelper {
    * Open the speed panel
    */
   async openPanel() {
-    // Use JS click to avoid scroll/visibility issues
+    // Wait for toggle to exist, then click
+    await this.driver.wait(until.elementLocated(By.css(SELECTORS.toggleBtn)), 5000);
     await this.driver.executeScript(`document.querySelector('${SELECTORS.toggleBtn}').click()`);
     await this.sleep(300);
   }
@@ -299,18 +305,34 @@ class ExtensionHelper {
   }
 
   /**
-   * Drag the panel to new position
+   * Drag the panel to new position using JS simulation
+   * (Selenium actions can't move outside viewport, so we use JS)
    */
   async dragPanel(deltaX, deltaY) {
-    const toggle = await this.driver.findElement(By.css(SELECTORS.toggleBtn));
+    await this.driver.executeScript(`
+      const toggle = document.querySelector('${SELECTORS.toggleBtn}');
+      const container = document.querySelector('${SELECTORS.container}');
+      if (!toggle || !container) return;
 
-    const actions = this.driver.actions({ async: true });
-    await actions
-      .move({ origin: toggle })
-      .press()
-      .move({ origin: toggle, x: deltaX, y: deltaY })
-      .release()
-      .perform();
+      const rect = toggle.getBoundingClientRect();
+      const startX = rect.left + rect.width / 2;
+      const startY = rect.top + rect.height / 2;
+
+      // Simulate mousedown
+      toggle.dispatchEvent(new MouseEvent('mousedown', {
+        bubbles: true, clientX: startX, clientY: startY
+      }));
+
+      // Simulate mousemove
+      document.dispatchEvent(new MouseEvent('mousemove', {
+        bubbles: true, clientX: startX + ${deltaX}, clientY: startY + ${deltaY}
+      }));
+
+      // Simulate mouseup
+      document.dispatchEvent(new MouseEvent('mouseup', {
+        bubbles: true, clientX: startX + ${deltaX}, clientY: startY + ${deltaY}
+      }));
+    `);
 
     await this.sleep(300);
   }
