@@ -55,3 +55,8 @@ Export all your settings to a file. Import them on another device or after reins
 ### Support
 
 Found a bug or have a suggestion? Visit our GitHub repository to report issues or contribute.
+
+### Version 1.1.2
+
+- Improved test reliability
+- See GitHub for full changelog

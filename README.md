@@ -102,6 +102,10 @@ Requires Firefox for E2E tests.
 - **storage** - Save preferences locally
 - **tabs** - Communicate with content scripts
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for version history.
+
 ## License
 
 MIT License
