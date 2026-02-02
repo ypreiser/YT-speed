@@ -2,30 +2,26 @@
 (function () {
   "use strict";
 
-  // Constants
-  const SPEED_MIN = 0.25;
-  const SPEED_MAX = 16;
+  // Import from shared utils
+  const { SPEED_MIN, SPEED_MAX, DEFAULT_SPEED, clampSpeed, roundSpeed, normalizeHostname } = window.YTSpeedUtils;
+
+  // Local constants
   const SPEED_PRESETS = [
     0.25, 0.5, 0.75, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3, 4,
   ];
-  const DEFAULT_SPEED = 1;
+  const DRAG_THRESHOLD = 5; // px before drag activates
 
-  function clampSpeed(speed) {
-    return Math.max(SPEED_MIN, Math.min(SPEED_MAX, speed));
-  }
-
-  function roundSpeed(speed) {
-    return Math.round(speed * 100) / 100;
-  }
-
-  async function getSiteConfig(hostname) {
+  async function getSiteConfig(host) {
     const { siteConfigs = {} } = await browser.storage.local.get('siteConfigs');
-    return siteConfigs[hostname] || null;
+    const normalized = normalizeHostname(host);
+    // Try normalized first, fall back to exact match
+    return siteConfigs[normalized] || siteConfigs[host] || null;
   }
 
-  async function saveSiteConfig(hostname, config) {
+  async function saveSiteConfig(host, config) {
     const { siteConfigs = {} } = await browser.storage.local.get('siteConfigs');
-    siteConfigs[hostname] = { ...siteConfigs[hostname], ...config };
+    const normalized = normalizeHostname(host);
+    siteConfigs[normalized] = { ...siteConfigs[normalized], ...config };
     await browser.storage.local.set({ siteConfigs });
   }
 
@@ -40,11 +36,17 @@
   let playerControlInjected = false;
   let isDragging = false;
   let dragOffset = { x: 0, y: 0 };
+  let dragStartPos = { x: 0, y: 0 };
   let didDrag = false;
   let uiCreated = false;
   let hiddenInThisTab = false;
   let container = null;
   let observer = null;
+  let cachedDragDims = null; // cached dimensions during drag
+  let applySpeedTimer = null; // debounce timer
+  let observerDebounceTimer = null; // MutationObserver debounce
+  let playHandler = null; // stored for cleanup
+  let ratechangeHandler = null; // stored for cleanup
 
   // ============ Site Config ============
 
@@ -129,7 +131,7 @@
       applySpeedToAllVideos();
       updateSpeedDisplay();
     } catch (err) {
-      console.log("YT Speed: Could not load settings", err);
+      console.warn("YT Speed [" + hostname + "]: loadSettings failed", err);
     }
   }
 
@@ -155,6 +157,12 @@
         video.playbackRate = currentSpeed;
       }
     });
+  }
+
+  // Debounced version to prevent multiple calls during page load
+  function applySpeedToAllVideosDebounced() {
+    if (applySpeedTimer) clearTimeout(applySpeedTimer);
+    applySpeedTimer = setTimeout(applySpeedToAllVideos, 50);
   }
 
   // ============ UI Updates ============
@@ -443,19 +451,30 @@
       if (e.button !== 0) return;
       isDragging = true;
       didDrag = false;
+      dragStartPos = { x: e.clientX, y: e.clientY };
       dragOffset.x = e.clientX - container.offsetLeft;
       dragOffset.y = e.clientY - container.offsetTop;
+      // Cache dimensions on mousedown
+      const panel = document.getElementById("yt-speed-panel");
+      const panelVisible = panel && panel.classList.contains("visible");
+      cachedDragDims = {
+        w: panelVisible ? panel.offsetWidth : 40,
+        h: panelVisible ? 50 + panel.offsetHeight : 40
+      };
       e.preventDefault();
     });
 
     document.addEventListener("mousemove", (e) => {
       if (!isDragging) return;
-      didDrag = true;
-      const panel = document.getElementById("yt-speed-panel");
-      const panelVisible = panel && panel.classList.contains("visible");
-      // Panel is 50px below toggle, so total height = 50 + panel height
-      const w = panelVisible ? panel.offsetWidth : 40;
-      const h = panelVisible ? 50 + panel.offsetHeight : 40;
+      // Set didDrag only after threshold exceeded (for tap detection)
+      if (!didDrag) {
+        const dx = Math.abs(e.clientX - dragStartPos.x);
+        const dy = Math.abs(e.clientY - dragStartPos.y);
+        if (dx >= DRAG_THRESHOLD || dy >= DRAG_THRESHOLD) {
+          didDrag = true;
+        }
+      }
+      const { w, h } = cachedDragDims || { w: 40, h: 40 };
       let x = e.clientX - dragOffset.x;
       let y = e.clientY - dragOffset.y;
       x = Math.max(0, Math.min(x, window.innerWidth - w));
@@ -467,6 +486,7 @@
     document.addEventListener("mouseup", () => {
       if (isDragging) {
         isDragging = false;
+        cachedDragDims = null;
         if (didDrag) savePosition(container);
       }
     });
@@ -476,18 +496,30 @@
       const touch = e.touches[0];
       isDragging = true;
       didDrag = false;
+      dragStartPos = { x: touch.clientX, y: touch.clientY };
       dragOffset.x = touch.clientX - container.offsetLeft;
       dragOffset.y = touch.clientY - container.offsetTop;
+      // Cache dimensions on touchstart
+      const panel = document.getElementById("yt-speed-panel");
+      const panelVisible = panel && panel.classList.contains("visible");
+      cachedDragDims = {
+        w: panelVisible ? panel.offsetWidth : 40,
+        h: panelVisible ? 50 + panel.offsetHeight : 40
+      };
     }, { passive: true });
 
     document.addEventListener("touchmove", (e) => {
       if (!isDragging) return;
-      didDrag = true;
-      const panel = document.getElementById("yt-speed-panel");
-      const panelVisible = panel && panel.classList.contains("visible");
-      const w = panelVisible ? panel.offsetWidth : 40;
-      const h = panelVisible ? 50 + panel.offsetHeight : 40;
       const touch = e.touches[0];
+      // Set didDrag only after threshold exceeded (for tap detection)
+      if (!didDrag) {
+        const dx = Math.abs(touch.clientX - dragStartPos.x);
+        const dy = Math.abs(touch.clientY - dragStartPos.y);
+        if (dx >= DRAG_THRESHOLD || dy >= DRAG_THRESHOLD) {
+          didDrag = true;
+        }
+      }
+      const { w, h } = cachedDragDims || { w: 40, h: 40 };
       let x = touch.clientX - dragOffset.x;
       let y = touch.clientY - dragOffset.y;
       x = Math.max(0, Math.min(x, window.innerWidth - w));
@@ -499,6 +531,7 @@
     document.addEventListener("touchend", () => {
       if (isDragging) {
         isDragging = false;
+        cachedDragDims = null;
         if (didDrag) savePosition(container);
       }
     });
@@ -506,21 +539,24 @@
     window.addEventListener("resize", () => snapToScreen(container));
   }
 
-  function snapToScreen(container, save = true) {
-    const rect = container.getBoundingClientRect();
-    const safeX = Math.max(0, Math.min(rect.left, window.innerWidth - container.offsetWidth));
-    const safeY = Math.max(0, Math.min(rect.top, window.innerHeight - container.offsetHeight));
+  function snapToScreen(cnt, save = true) {
+    if (!cnt) return;
+    const rect = cnt.getBoundingClientRect();
+    const width = cnt.offsetWidth || 40;
+    const height = cnt.offsetHeight || 40;
+    const safeX = Math.max(0, Math.min(rect.left, window.innerWidth - width));
+    const safeY = Math.max(0, Math.min(rect.top, window.innerHeight - height));
     if (safeX !== rect.left || safeY !== rect.top) {
-      container.style.left = safeX + "px";
-      container.style.top = safeY + "px";
-      if (save) savePosition(container);
+      cnt.style.left = safeX + "px";
+      cnt.style.top = safeY + "px";
+      if (save) savePosition(cnt);
     }
   }
 
   function savePosition(cnt) {
     const rect = cnt.getBoundingClientRect();
     setSiteConfig('panelPosition', { x: rect.left, y: rect.top })
-      .catch((err) => console.log("YT Speed: Could not save position", err));
+      .catch((err) => console.warn("YT Speed [" + hostname + "]: savePosition failed", err));
   }
 
   async function loadPosition(cnt) {
@@ -533,7 +569,7 @@
       cnt.style.left = safeX + "px";
       cnt.style.top = safeY + "px";
     } catch (err) {
-      console.log("YT Speed: Could not load position", err);
+      console.warn("YT Speed [" + hostname + "]: loadPosition failed", err);
     }
   }
 
@@ -569,11 +605,18 @@
       playerControlInjected = true;
     }
 
-    // Create button with inline onclick
+    // Create button with click handler
     const btn = document.createElement("button");
     btn.className = "yt-speed-player-btn ytp-button";
     btn.title = "Playback Speed";
-    btn.setAttribute("onclick", "event.stopPropagation(); window.__ytSpeedToggle(); return false;");
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      // Call the injected page-context function
+      const script = document.createElement("script");
+      script.textContent = "window.__ytSpeedToggle && window.__ytSpeedToggle();";
+      document.documentElement.appendChild(script);
+      script.remove();
+    });
     const span = document.createElement("span");
     span.className = "yt-speed-player-text";
     span.textContent = currentSpeed + "x";
@@ -585,55 +628,64 @@
 
   // ============ Video Observer ============
 
+  // Enforce speed with exponential backoff for YouTube's aggressive ratechange
+  function enforceSpeed(video, attempt = 0) {
+    const maxAttempts = 5;
+    const delays = [10, 25, 50, 100, 200];
+    if (attempt >= maxAttempts) return;
+    if (video.playbackRate !== currentSpeed) {
+      video.playbackRate = currentSpeed;
+      setTimeout(() => enforceSpeed(video, attempt + 1), delays[attempt]);
+    }
+  }
+
   function observeVideos() {
     observer = new MutationObserver((mutations) => {
-      let hasNewVideo = false;
-      let hasPlayerControls = false;
+      // Debounce observer callback
+      if (observerDebounceTimer) clearTimeout(observerDebounceTimer);
+      observerDebounceTimer = setTimeout(() => {
+        let hasNewVideo = false;
+        let hasPlayerControls = false;
 
-      for (const mutation of mutations) {
-        for (const node of mutation.addedNodes) {
-          if (node.nodeName === "VIDEO" || node.querySelector?.("video")) {
-            hasNewVideo = true;
-          }
-          if (node.querySelector?.(".ytp-settings-button")) {
-            hasPlayerControls = true;
+        for (const mutation of mutations) {
+          for (const node of mutation.addedNodes) {
+            if (node.nodeName === "VIDEO" || node.querySelector?.("video")) {
+              hasNewVideo = true;
+            }
+            if (node.querySelector?.(".ytp-settings-button")) {
+              hasPlayerControls = true;
+            }
           }
         }
-      }
 
-      if (hasNewVideo) {
-        applySpeedToAllVideos();
-        maybeShowUI(); // Show UI when video detected
-      }
-      if (hasPlayerControls && isYouTube) createPlayerControl();
+        if (hasNewVideo) {
+          applySpeedToAllVideosDebounced();
+          maybeShowUI();
+        }
+        if (hasPlayerControls && isYouTube) createPlayerControl();
+      }, 100);
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
 
-    // Handle video play events
-    document.addEventListener(
-      "play",
-      (e) => {
-        if (e.target.tagName === "VIDEO") {
-          e.target.playbackRate = currentSpeed;
-        }
-      },
-      true,
-    );
+    // Handle video play events - store reference for cleanup
+    playHandler = (e) => {
+      if (e.target.tagName === "VIDEO") {
+        e.target.playbackRate = currentSpeed;
+      }
+    };
+    document.addEventListener("play", playHandler, true);
 
-    // Override YouTube's speed reset attempts
-    document.addEventListener(
-      "ratechange",
-      (e) => {
-        if (
-          e.target.tagName === "VIDEO" &&
-          e.target.playbackRate !== currentSpeed
-        ) {
-          setTimeout(() => (e.target.playbackRate = currentSpeed), 10);
-        }
-      },
-      true,
-    );
+    // Override YouTube's speed reset attempts with exponential backoff
+    ratechangeHandler = (e) => {
+      if (
+        e.target.tagName === "VIDEO" &&
+        e.target.playbackRate !== currentSpeed
+      ) {
+        enforceSpeed(e.target, 0);
+      }
+    };
+    document.addEventListener("ratechange", ratechangeHandler, true);
   }
 
   // ============ Cleanup ============
@@ -642,6 +694,22 @@
     if (observer) {
       observer.disconnect();
       observer = null;
+    }
+    if (playHandler) {
+      document.removeEventListener("play", playHandler, true);
+      playHandler = null;
+    }
+    if (ratechangeHandler) {
+      document.removeEventListener("ratechange", ratechangeHandler, true);
+      ratechangeHandler = null;
+    }
+    if (applySpeedTimer) {
+      clearTimeout(applySpeedTimer);
+      applySpeedTimer = null;
+    }
+    if (observerDebounceTimer) {
+      clearTimeout(observerDebounceTimer);
+      observerDebounceTimer = null;
     }
   }
 

@@ -1,58 +1,90 @@
 /**
  * Unit tests for extension logic (no browser required)
- * Tests pure JavaScript functions extracted from content.js
+ * Tests pure JavaScript functions from shared utils
  */
 
-describe('Speed Clamping Logic', () => {
-  const MIN_SPEED = 0.25;
-  const MAX_SPEED = 16;
+const fs = require('fs');
+const vm = require('vm');
+const path = require('path');
 
-  function clampSpeed(speed) {
-    speed = Math.max(MIN_SPEED, Math.min(MAX_SPEED, speed));
-    speed = Math.round(speed * 100) / 100;
-    return speed;
+const {
+  SPEED_MIN,
+  SPEED_MAX,
+  clampSpeed,
+  roundSpeed,
+  validateSpeed,
+  normalizeHostname,
+  validateImportData,
+  VALID_CONFIG_KEYS
+} = require('../src/shared/utils');
+
+describe('UMD Export (browser context)', () => {
+  test('exports to window.YTSpeedUtils when module is undefined', () => {
+    const code = fs.readFileSync(path.join(__dirname, '../src/shared/utils.js'), 'utf8');
+    const window = {};
+    const context = vm.createContext({ window });
+    vm.runInContext(code, context);
+
+    expect(window.YTSpeedUtils).toBeDefined();
+    expect(typeof window.YTSpeedUtils.clampSpeed).toBe('function');
+    expect(typeof window.YTSpeedUtils.validateSpeed).toBe('function');
+    expect(window.YTSpeedUtils.SPEED_MIN).toBe(0.25);
+  });
+});
+
+describe('Speed Clamping Logic', () => {
+  // Combined clamp + round (matches content.js behavior)
+  function clampAndRound(speed) {
+    return roundSpeed(clampSpeed(speed));
   }
 
   test('clamps below minimum', () => {
-    expect(clampSpeed(0.1)).toBe(0.25);
-    expect(clampSpeed(-1)).toBe(0.25);
-    expect(clampSpeed(0)).toBe(0.25);
+    expect(clampAndRound(0.1)).toBe(SPEED_MIN);
+    expect(clampAndRound(-1)).toBe(SPEED_MIN);
+    expect(clampAndRound(0)).toBe(SPEED_MIN);
   });
 
   test('clamps above maximum', () => {
-    expect(clampSpeed(17)).toBe(16);
-    expect(clampSpeed(100)).toBe(16);
-    expect(clampSpeed(20)).toBe(16);
+    expect(clampAndRound(17)).toBe(SPEED_MAX);
+    expect(clampAndRound(100)).toBe(SPEED_MAX);
+    expect(clampAndRound(20)).toBe(SPEED_MAX);
   });
 
   test('rounds to 2 decimal places', () => {
-    expect(clampSpeed(1.234)).toBe(1.23);
-    expect(clampSpeed(1.999)).toBe(2);
-    expect(clampSpeed(2.555)).toBe(2.56);
+    expect(clampAndRound(1.234)).toBe(1.23);
+    expect(clampAndRound(1.999)).toBe(2);
+    expect(clampAndRound(2.555)).toBe(2.56);
   });
 
   test('allows valid speeds unchanged', () => {
-    expect(clampSpeed(1)).toBe(1);
-    expect(clampSpeed(1.5)).toBe(1.5);
-    expect(clampSpeed(2)).toBe(2);
-    expect(clampSpeed(0.25)).toBe(0.25);
-    expect(clampSpeed(16)).toBe(16);
+    expect(clampAndRound(1)).toBe(1);
+    expect(clampAndRound(1.5)).toBe(1.5);
+    expect(clampAndRound(2)).toBe(2);
+    expect(clampAndRound(SPEED_MIN)).toBe(SPEED_MIN);
+    expect(clampAndRound(SPEED_MAX)).toBe(SPEED_MAX);
   });
 });
 
 describe('Hostname Normalization', () => {
-  function normalizeHostname(hostname) {
-    return hostname.replace(/^www\./, '');
-  }
+  // Uses imported normalizeHostname from utils
 
   test('removes www prefix', () => {
     expect(normalizeHostname('www.youtube.com')).toBe('youtube.com');
     expect(normalizeHostname('www.vimeo.com')).toBe('vimeo.com');
   });
 
-  test('leaves non-www hostnames unchanged', () => {
+  test('removes m prefix', () => {
+    expect(normalizeHostname('m.youtube.com')).toBe('youtube.com');
+    expect(normalizeHostname('m.twitch.tv')).toBe('twitch.tv');
+  });
+
+  test('removes mobile prefix', () => {
+    expect(normalizeHostname('mobile.twitter.com')).toBe('twitter.com');
+  });
+
+  test('leaves plain hostnames unchanged', () => {
     expect(normalizeHostname('youtube.com')).toBe('youtube.com');
-    expect(normalizeHostname('m.youtube.com')).toBe('m.youtube.com');
+    expect(normalizeHostname('vimeo.com')).toBe('vimeo.com');
   });
 });
 
@@ -172,6 +204,59 @@ describe('Settings Export/Import Format', () => {
   });
 });
 
+describe('Drag Threshold Logic', () => {
+  const DRAG_THRESHOLD = 5;
+
+  function exceedsThreshold(startX, startY, currentX, currentY) {
+    const dx = Math.abs(currentX - startX);
+    const dy = Math.abs(currentY - startY);
+    return dx >= DRAG_THRESHOLD || dy >= DRAG_THRESHOLD;
+  }
+
+  test('small movement does not trigger drag', () => {
+    expect(exceedsThreshold(100, 100, 102, 101)).toBe(false);
+    expect(exceedsThreshold(100, 100, 104, 104)).toBe(false);
+  });
+
+  test('movement at threshold triggers drag', () => {
+    expect(exceedsThreshold(100, 100, 105, 100)).toBe(true);
+    expect(exceedsThreshold(100, 100, 100, 105)).toBe(true);
+  });
+
+  test('larger movement triggers drag', () => {
+    expect(exceedsThreshold(100, 100, 120, 100)).toBe(true);
+    expect(exceedsThreshold(100, 100, 100, 150)).toBe(true);
+  });
+
+  test('diagonal movement counts', () => {
+    expect(exceedsThreshold(100, 100, 106, 106)).toBe(true);
+  });
+});
+
+describe('Exponential Backoff Delays', () => {
+  const delays = [10, 25, 50, 100, 200];
+  const maxAttempts = 5;
+
+  test('has correct number of attempts', () => {
+    expect(delays.length).toBe(maxAttempts);
+  });
+
+  test('delays increase exponentially', () => {
+    for (let i = 1; i < delays.length; i++) {
+      expect(delays[i]).toBeGreaterThan(delays[i - 1]);
+    }
+  });
+
+  test('final delay is reasonable', () => {
+    expect(delays[delays.length - 1]).toBeLessThanOrEqual(200);
+  });
+
+  test('total wait time is bounded', () => {
+    const totalWait = delays.reduce((a, b) => a + b, 0);
+    expect(totalWait).toBeLessThan(500); // under 500ms total
+  });
+});
+
 describe('Drag Bounds Calculation', () => {
   const TOGGLE_SIZE = 40;
   const PANEL_GAP = 50; // panel is 50px below toggle
@@ -226,5 +311,167 @@ describe('Drag Bounds Calculation', () => {
   test('valid position stays unchanged', () => {
     const bounds = calcDragBounds(true, 300, 400, 1000, 800);
     expect(clampPosition(100, 100, bounds)).toEqual({ x: 100, y: 100 });
+  });
+});
+
+describe('validateSpeed', () => {
+  // Uses imported validateSpeed from utils
+
+  test('accepts valid speeds', () => {
+    expect(validateSpeed(0.25)).toBe(true);
+    expect(validateSpeed(1)).toBe(true);
+    expect(validateSpeed(2.5)).toBe(true);
+    expect(validateSpeed(16)).toBe(true);
+  });
+
+  test('rejects speeds below minimum', () => {
+    expect(validateSpeed(0.1)).toBe(false);
+    expect(validateSpeed(0.24)).toBe(false);
+    expect(validateSpeed(0)).toBe(false);
+    expect(validateSpeed(-1)).toBe(false);
+  });
+
+  test('rejects speeds above maximum', () => {
+    expect(validateSpeed(17)).toBe(false);
+    expect(validateSpeed(16.01)).toBe(false);
+    expect(validateSpeed(100)).toBe(false);
+  });
+
+  test('rejects non-numeric values', () => {
+    expect(validateSpeed(NaN)).toBe(false);
+    expect(validateSpeed(null)).toBe(false);
+    expect(validateSpeed(undefined)).toBe(false);
+    expect(validateSpeed('abc')).toBe(false);
+  });
+
+  test('handles string numbers', () => {
+    expect(validateSpeed('2')).toBe(true);
+    expect(validateSpeed('0.5')).toBe(true);
+    expect(validateSpeed('0.25')).toBe(true);
+    expect(validateSpeed('16')).toBe(true);
+    expect(validateSpeed('17')).toBe(false);
+    expect(validateSpeed('0.1')).toBe(false);
+  });
+});
+
+describe('validateImportData', () => {
+  // Uses imported validateImportData from utils
+
+  test('accepts valid complete config', () => {
+    const data = {
+      defaultSpeed: 1.5,
+      hideGlobal: false,
+      panelPosition: { x: 10, y: 20 },
+      siteConfigs: {
+        'youtube.com': { defaultSpeed: 2, hidden: false },
+        'vimeo.com': { defaultSpeed: 1.25, hidden: true }
+      }
+    };
+    expect(validateImportData(data)).toBe(true);
+  });
+
+  test('accepts valid partial configs', () => {
+    expect(validateImportData({ defaultSpeed: 1.5 })).toBe(true);
+    expect(validateImportData({ hideGlobal: true })).toBe(true);
+    expect(validateImportData({ panelPosition: { x: 0, y: 0 } })).toBe(true);
+    expect(validateImportData({ siteConfigs: {} })).toBe(true);
+    expect(validateImportData({ siteConfigs: { 'youtube.com': {} } })).toBe(true);
+  });
+
+  test('accepts empty object', () => {
+    expect(validateImportData({})).toBe(true);
+  });
+
+  test('rejects null', () => {
+    expect(validateImportData(null)).toBe(false);
+  });
+
+  test('rejects non-object types', () => {
+    expect(validateImportData('string')).toBe(false);
+    expect(validateImportData(123)).toBe(false);
+    expect(validateImportData(true)).toBe(false);
+    expect(validateImportData(undefined)).toBe(false);
+  });
+
+  test('rejects arrays with items via unknown keys', () => {
+    // Note: empty array passes (typeof [] === 'object', Object.keys([]) === [])
+    // Arrays with items fail because keys are "0", "1", etc. which are invalid
+    expect(validateImportData([1, 2, 3])).toBe(false);
+    expect(validateImportData([{ defaultSpeed: 1 }])).toBe(false);
+  });
+
+  test('rejects unknown keys', () => {
+    expect(validateImportData({ unknownKey: 'value' })).toBe(false);
+    expect(validateImportData({ defaultSpeed: 1, extraField: true })).toBe(false);
+  });
+
+  test('rejects invalid speed range in root', () => {
+    expect(validateImportData({ defaultSpeed: 0.1 })).toBe(false);
+    expect(validateImportData({ defaultSpeed: 17 })).toBe(false);
+    expect(validateImportData({ defaultSpeed: -1 })).toBe(false);
+    expect(validateImportData({ defaultSpeed: 'fast' })).toBe(false);
+  });
+
+  test('rejects invalid speed range in siteConfigs', () => {
+    expect(validateImportData({
+      siteConfigs: { 'youtube.com': { defaultSpeed: 0.1 } }
+    })).toBe(false);
+    expect(validateImportData({
+      siteConfigs: { 'youtube.com': { defaultSpeed: 17 } }
+    })).toBe(false);
+  });
+
+  test('rejects invalid hideGlobal type', () => {
+    expect(validateImportData({ hideGlobal: 'true' })).toBe(false);
+    expect(validateImportData({ hideGlobal: 1 })).toBe(false);
+    expect(validateImportData({ hideGlobal: null })).toBe(false);
+  });
+
+  test('rejects invalid panelPosition structure', () => {
+    expect(validateImportData({ panelPosition: null })).toBe(false);
+    expect(validateImportData({ panelPosition: 'top-left' })).toBe(false);
+    expect(validateImportData({ panelPosition: { x: 10 } })).toBe(false);
+    expect(validateImportData({ panelPosition: { y: 20 } })).toBe(false);
+    expect(validateImportData({ panelPosition: { x: '10', y: 20 } })).toBe(false);
+  });
+
+  test('rejects invalid siteConfigs structure', () => {
+    expect(validateImportData({ siteConfigs: 'invalid' })).toBe(false);
+    expect(validateImportData({ siteConfigs: { 'youtube.com': null } })).toBe(false);
+    expect(validateImportData({ siteConfigs: { 'youtube.com': 'config' } })).toBe(false);
+  });
+
+  test('rejects invalid hidden type in siteConfigs', () => {
+    expect(validateImportData({
+      siteConfigs: { 'youtube.com': { hidden: 'yes' } }
+    })).toBe(false);
+    expect(validateImportData({
+      siteConfigs: { 'youtube.com': { hidden: 1 } }
+    })).toBe(false);
+  });
+});
+
+describe('roundSpeed (isolated)', () => {
+  // Uses imported roundSpeed from utils
+
+  test('rounds to 2 decimal places', () => {
+    expect(roundSpeed(1.234)).toBe(1.23);
+    expect(roundSpeed(1.999)).toBe(2);
+    expect(roundSpeed(0.255)).toBe(0.26);
+    expect(roundSpeed(2.345)).toBe(2.35);
+  });
+
+  test('preserves exact values', () => {
+    expect(roundSpeed(1)).toBe(1);
+    expect(roundSpeed(1.5)).toBe(1.5);
+    expect(roundSpeed(2.25)).toBe(2.25);
+    expect(roundSpeed(0.25)).toBe(0.25);
+  });
+
+  test('handles edge cases', () => {
+    expect(roundSpeed(0.001)).toBe(0);
+    expect(roundSpeed(0.005)).toBe(0.01);
+    expect(roundSpeed(16.004)).toBe(16);
+    expect(roundSpeed(16.005)).toBe(16.01);
   });
 });

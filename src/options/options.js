@@ -2,18 +2,8 @@
 (function() {
   'use strict';
 
-  const SPEED_MIN = 0.25;
-  const SPEED_MAX = 16;
-  const VALID_CONFIG_KEYS = ['defaultSpeed', 'hideGlobal', 'panelPosition', 'siteConfigs'];
-
-  function clampSpeed(speed) {
-    return Math.max(SPEED_MIN, Math.min(SPEED_MAX, speed));
-  }
-
-  function validateSpeed(value) {
-    const num = parseFloat(value);
-    return !isNaN(num) && num >= SPEED_MIN && num <= SPEED_MAX;
-  }
+  // Import from shared utils
+  const { SPEED_MIN, SPEED_MAX, clampSpeed, validateSpeed, validateImportData } = window.YTSpeedUtils;
 
   function createSvgIcon(...paths) {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -29,29 +19,6 @@
       svg.appendChild(path);
     });
     return svg;
-  }
-
-  function validateImportData(data) {
-    if (typeof data !== 'object' || data === null) return false;
-    const validKeys = new Set(VALID_CONFIG_KEYS);
-    for (const key of Object.keys(data)) {
-      if (!validKeys.has(key)) return false;
-    }
-    if (data.defaultSpeed !== undefined && !validateSpeed(data.defaultSpeed)) return false;
-    if (data.hideGlobal !== undefined && typeof data.hideGlobal !== 'boolean') return false;
-    if (data.panelPosition !== undefined) {
-      if (typeof data.panelPosition !== 'object' || data.panelPosition === null) return false;
-      if (typeof data.panelPosition.x !== 'number' || typeof data.panelPosition.y !== 'number') return false;
-    }
-    if (data.siteConfigs) {
-      if (typeof data.siteConfigs !== 'object') return false;
-      for (const [site, cfg] of Object.entries(data.siteConfigs)) {
-        if (typeof cfg !== 'object' || cfg === null) return false;
-        if (cfg.defaultSpeed !== undefined && !validateSpeed(cfg.defaultSpeed)) return false;
-        if (cfg.hidden !== undefined && typeof cfg.hidden !== 'boolean') return false;
-      }
-    }
-    return true;
   }
 
   const hideGlobalCheckbox = document.getElementById('hide-global');

@@ -2,17 +2,8 @@
 (function() {
   'use strict';
 
-  const SPEED_MIN = 0.25;
-  const SPEED_MAX = 16;
-  const DEFAULT_SPEED = 1;
-
-  function clampSpeed(speed) {
-    return Math.max(SPEED_MIN, Math.min(SPEED_MAX, speed));
-  }
-
-  function roundSpeed(speed) {
-    return Math.round(speed * 100) / 100;
-  }
+  // Import from shared utils
+  const { SPEED_MIN, SPEED_MAX, DEFAULT_SPEED, clampSpeed, roundSpeed } = window.YTSpeedUtils;
 
   let currentSpeed = DEFAULT_SPEED;
   let defaultSpeed = DEFAULT_SPEED;
@@ -68,7 +59,7 @@
       }
       updateDisplay();
     }).catch((err) => {
-      console.error('Failed to load settings:', err);
+      console.warn('YT Speed [popup]: loadFromStorage failed', err);
       updateDisplay();
     });
   }
