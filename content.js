@@ -2,6 +2,9 @@
 (function () {
   "use strict";
 
+  // Browser API compatibility layer (Chrome uses 'chrome', Firefox uses 'browser')
+  const browserAPI = typeof browser !== "undefined" ? browser : chrome;
+
   // Configuration
   const SPEED_PRESETS = [
     0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3, 4,
@@ -19,7 +22,7 @@
   // ============ Storage ============
 
   function loadSettings() {
-    browser.storage.local
+    browserAPI.storage.local
       .get(["defaultSpeed"])
       .then((result) => {
         if (result.defaultSpeed) {
@@ -33,7 +36,7 @@
   }
 
   function saveDefaultSpeed(speed) {
-    browser.storage.local.set({ defaultSpeed: speed }).catch(() => {});
+    browserAPI.storage.local.set({ defaultSpeed: speed }).catch(() => {});
   }
 
   // ============ Speed Control ============
@@ -215,14 +218,6 @@
   }
 
   // ============ Player Control Button ============
-
-  function togglePanel() {
-    const panel = document.getElementById("yt-speed-panel");
-    if (panel) {
-      uiVisible = !uiVisible;
-      panel.classList.toggle("visible", uiVisible);
-    }
-  }
 
   function createPlayerControl() {
     if (document.querySelector(".yt-speed-player-btn")) return;

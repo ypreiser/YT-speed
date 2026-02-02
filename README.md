@@ -1,6 +1,6 @@
 # YouTube Speed Control
 
-A lightweight Firefox extension for controlling YouTube video playback speed. Works on both desktop and mobile (Firefox for Android).
+A lightweight browser extension for controlling YouTube video playback speed. Works on Chrome, Firefox, Edge, Opera, Brave, and other Chromium-based browsers. Also supports mobile (Firefox for Android).
 
 ## Features
 
@@ -14,18 +14,61 @@ A lightweight Firefox extension for controlling YouTube video playback speed. Wo
 
 ## Installation
 
-### Firefox Desktop (Temporary - for development)
+### Quick Build (All Browsers)
+
+```bash
+./build.sh
+```
+
+This creates ready-to-install packages in the `dist/` folder for all supported browsers.
+
+---
+
+### Chrome / Chromium (Manual)
+
+1. Open Chrome and navigate to `chrome://extensions/`
+2. Enable "Developer mode" (toggle in top-right)
+3. Click "Load unpacked"
+4. Select the folder containing `manifest-chrome.json` (rename to `manifest.json` first)
+5. Visit YouTube to use the extension
+
+**For permanent installation:** Submit to [Chrome Web Store](https://chrome.google.com/webstore/devconsole)
+
+---
+
+### Firefox Desktop (Manual)
 
 1. Open Firefox and navigate to `about:debugging#/runtime/this-firefox`
 2. Click "Load Temporary Add-on..."
-3. Navigate to this folder and select `manifest.json`
-4. The extension is now loaded! Visit YouTube to use it.
+3. Navigate to this folder and select `manifest-firefox.json` (or `manifest.json`)
+4. Visit YouTube to use the extension
 
-### Firefox Desktop (Permanent)
+**For permanent installation:** Submit to [Firefox Add-ons](https://addons.mozilla.org/)
 
-1. Zip all the extension files (manifest.json, content.js, popup.html, popup.js, icons/)
-2. Submit to [Firefox Add-ons](https://addons.mozilla.org/) for review
-3. Once approved, users can install directly from the store
+---
+
+### Microsoft Edge
+
+1. Open Edge and navigate to `edge://extensions/`
+2. Enable "Developer mode" (toggle in bottom-left)
+3. Click "Load unpacked"
+4. Select the folder containing `manifest-chrome.json` (rename to `manifest.json` first)
+5. Visit YouTube to use the extension
+
+**For permanent installation:** Submit to [Edge Add-ons](https://partner.microsoft.com/dashboard/microsoftedge/)
+
+---
+
+### Opera / Brave / Vivaldi
+
+These Chromium-based browsers use the same manifest as Chrome:
+
+1. Navigate to the extensions page (`opera://extensions`, `brave://extensions`, etc.)
+2. Enable "Developer mode"
+3. Click "Load unpacked"
+4. Select the folder with `manifest-chrome.json` (rename to `manifest.json`)
+
+---
 
 ### Firefox for Android
 
@@ -72,21 +115,38 @@ The extension injects a content script into YouTube pages that:
 
 ```
 YT-speed/
-├── manifest.json      # Extension configuration
-├── content.js         # Main script (speed control + UI)
-├── popup.html         # Settings popup (desktop)
-├── popup.js           # Popup functionality
+├── manifest.json          # Default manifest (Firefox)
+├── manifest-firefox.json  # Firefox manifest (Manifest V2)
+├── manifest-chrome.json   # Chrome/Edge manifest (Manifest V3)
+├── content.js             # Main script (speed control + UI)
+├── content.css            # Content script styles
+├── popup.html             # Settings popup (desktop)
+├── popup.js               # Popup functionality
+├── popup.css              # Popup styles
+├── build.sh               # Build script for all browsers
 ├── icons/
-│   ├── icon-48.svg    # Small icon
-│   └── icon-96.svg    # Large icon
-└── README.md          # This file
+│   ├── icon-48.svg        # Small icon
+│   └── icon-96.svg        # Large icon
+├── dist/                  # Built packages (after running build.sh)
+│   ├── firefox/
+│   ├── chrome/
+│   └── *.zip files
+└── README.md              # This file
 ```
 
 ## Browser Compatibility
 
-- **Firefox Desktop**: v57.0+
-- **Firefox for Android**: v113.0+
-- Uses Manifest V2 for broader compatibility
+| Browser | Version | Manifest |
+|---------|---------|----------|
+| Chrome | 88+ | V3 |
+| Firefox Desktop | 57+ | V2 |
+| Firefox Android | 113+ | V2 |
+| Microsoft Edge | 88+ | V3 |
+| Opera | 75+ | V3 |
+| Brave | Latest | V3 |
+| Vivaldi | 3.6+ | V3 |
+
+**Note:** Chromium-based browsers (Chrome, Edge, Opera, Brave, Vivaldi) all use Manifest V3. Firefox uses Manifest V2 for broader compatibility.
 
 ## Permissions
 
@@ -119,12 +179,36 @@ YT-speed/
 
 ## Development
 
-To modify the extension:
+### Building for All Browsers
 
+```bash
+./build.sh
+```
+
+This creates distribution packages in `dist/` for Firefox, Chrome, and Edge.
+
+### Manual Development
+
+**Firefox:**
 1. Edit the source files
 2. Go to `about:debugging` → "This Firefox"
 3. Click "Reload" on the extension
 4. Refresh YouTube to see changes
+
+**Chrome/Edge:**
+1. Edit the source files
+2. Go to `chrome://extensions/` or `edge://extensions/`
+3. Click the refresh icon on the extension card
+4. Refresh YouTube to see changes
+
+### API Compatibility
+
+The extension uses a compatibility layer to work across browsers:
+```javascript
+const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
+```
+
+This automatically uses the correct API (`browser` for Firefox, `chrome` for Chromium).
 
 ## License
 

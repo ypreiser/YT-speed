@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Speed Control",
+  "version": "1.0.0",
+  "description": "Set default playback speed and control YouTube video speed up to 16x. Mobile-friendly!",
+  "icons": {
+    "48": "icons/icon-48.svg",
+    "96": "icons/icon-96.svg"
+  },
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "*://*.youtube.com/*",
+    "*://youtube.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.youtube.com/*",
+        "*://youtube.com/*"
+      ],
+      "css": ["content.css"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_icon": {
+      "48": "icons/icon-48.svg",
+      "96": "icons/icon-96.svg"
+    },
+    "default_title": "YouTube Speed Control",
+    "default_popup": "popup.html"
+  }
+}
