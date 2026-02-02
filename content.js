@@ -219,14 +219,6 @@
 
   // ============ Player Control Button ============
 
-  function togglePanel() {
-    const panel = document.getElementById("yt-speed-panel");
-    if (panel) {
-      uiVisible = !uiVisible;
-      panel.classList.toggle("visible", uiVisible);
-    }
-  }
-
   function createPlayerControl() {
     if (document.querySelector(".yt-speed-player-btn")) return;
 
