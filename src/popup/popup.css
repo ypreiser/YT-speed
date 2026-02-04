@@ -1,6 +1,4 @@
-@import "../shared/shared.css";
-
-/* Popup-specific styles */
+/* Popup-specific styles - matches floating panel */
 *,
 *::before,
 *::after {
@@ -8,54 +6,101 @@
 }
 
 body {
-  width: 320px;
-  padding: 16px;
-  background: var(--yt-bg-primary);
-  border-radius: 20px;
-  font-family:
-    "Geist",
-    -apple-system,
-    BlinkMacSystemFont,
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
-  overflow-y: auto;
-  scrollbar-width: none; /* Firefox */
+  width: 300px;
   margin: 0;
+  padding: 0;
+  background: var(--yt-bg-primary);
+  font-family: "Geist", -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-body::-webkit-scrollbar {
-  display: none; /* Chrome/Safari */
+#yt-speed-popup {
+  background: var(--yt-bg-primary);
+  border-radius: 0;
+  padding: 12px 16px;
+  border: none;
 }
 
-/* Constrain all content */
-body > * {
-  max-width: 100%;
+/* Compact speed display for popup */
+#yt-speed-popup .yt-speed-current {
+  font-size: 40px;
 }
 
-/* Speed display - smaller for popup */
-.yt-speed-current {
-  font-size: 44px;
+#yt-speed-popup .yt-speed-header {
+  margin-bottom: 12px;
+  padding-bottom: 10px;
 }
 
-/* Display container */
-.yt-speed-display-container {
+/* Smaller presets */
+#yt-speed-popup .yt-speed-presets {
+  margin-bottom: 10px;
+  gap: 4px;
+}
+
+#yt-speed-popup .yt-speed-preset {
+  padding: 8px 4px;
+}
+
+/* Compact custom input */
+#yt-speed-popup .yt-speed-custom {
+  margin-bottom: 10px;
+}
+
+#yt-speed-popup .yt-speed-custom label {
+  margin-bottom: 6px;
+}
+
+#yt-speed-popup .yt-speed-number-input {
+  height: 38px;
+  background: var(--yt-bg-secondary);
+  border: 1px solid var(--yt-border);
+  border-radius: 10px;
+}
+
+#yt-speed-popup .yt-speed-number-btn {
+  width: 38px;
+  height: 100%;
+  background: var(--yt-bg-hover);
+}
+
+#yt-speed-popup .yt-speed-number-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+#yt-speed-popup .yt-speed-number-input input[type="number"] {
+  padding: 8px;
+  font-size: 14px;
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--yt-border);
+  border-right: 1px solid var(--yt-border);
+}
+
+/* Compact reset button */
+#yt-speed-popup .yt-speed-reset {
+  margin-bottom: 10px;
+  padding: 10px;
+}
+
+/* Speed display */
+#yt-speed-popup .yt-speed-display-container {
   text-align: center;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 /* Slider section */
-.yt-speed-slider {
-  margin-bottom: 16px;
+#yt-speed-popup .yt-speed-slider {
+  margin-bottom: 12px;
 }
 
 /* Action buttons section */
-.yt-speed-actions {
-  padding-top: 12px;
+#yt-speed-popup .yt-speed-actions {
+  padding-top: 10px;
   border-top: 1px solid var(--yt-border);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .yt-speed-save-row {
@@ -67,10 +112,15 @@ body > * {
   flex: 1;
 }
 
+/* Disable button */
+.yt-speed-disable {
+  width: 100%;
+}
+
 /* Info/footer */
-.yt-speed-info {
-  margin-top: 12px;
-  padding-top: 12px;
+#yt-speed-popup .yt-speed-info {
+  margin-top: 8px;
+  padding-top: 8px;
   border-top: 1px solid var(--yt-border);
 }
 
@@ -102,19 +152,30 @@ body > * {
   border-color: var(--yt-accent);
 }
 
-/* Mobile popup - Firefox Android shows popup full-screen (viewport > body width) */
-@media (min-width: 321px) and (max-width: 600px) {
+
+/* Disabled state - speed control inactive */
+#yt-speed-popup.yt-speed-disabled .yt-speed-display-container,
+#yt-speed-popup.yt-speed-disabled .yt-speed-slider,
+#yt-speed-popup.yt-speed-disabled .yt-speed-presets,
+#yt-speed-popup.yt-speed-disabled .yt-speed-custom,
+#yt-speed-popup.yt-speed-disabled .yt-speed-reset,
+#yt-speed-popup.yt-speed-disabled .yt-speed-save-row {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Mobile popup - Firefox Android shows popup full-screen */
+@media (min-width: 301px) and (max-width: 600px) {
   body {
     width: 100%;
     min-height: 100vh;
-    padding: 20px;
-    border-radius: 0;
-    overflow-y: auto;
   }
 
-  /* Prevent slider thumb cut-off */
-  .yt-speed-slider {
-    padding: 0 12px;
+  #yt-speed-popup {
+    min-height: 100vh;
+    padding: 20px;
+    border-radius: 0;
+    border: none;
   }
 
   /* Larger touch targets for presets */
@@ -130,8 +191,11 @@ body > * {
   }
 
   /* Larger custom input */
-  .yt-speed-custom input[type="number"] {
-    padding: 14px;
+  .yt-speed-number-input {
+    height: 48px;
+  }
+
+  .yt-speed-number-input input[type="number"] {
     font-size: 16px;
   }
 
@@ -150,8 +214,13 @@ body > * {
   body {
     width: 100%;
     height: 100vh;
+  }
+
+  #yt-speed-popup {
+    height: 100vh;
     padding: 12px 20px;
     border-radius: 0;
+    border: none;
     overflow-y: auto;
   }
 
@@ -173,7 +242,6 @@ body > * {
   /* Tighter slider */
   .yt-speed-slider {
     margin-bottom: 10px;
-    padding: 0 12px;
   }
 
   /* Smaller presets */
@@ -192,8 +260,8 @@ body > * {
     margin-bottom: 10px;
   }
 
-  .yt-speed-custom input[type="number"] {
-    padding: 10px;
+  .yt-speed-number-input {
+    height: 36px;
   }
 
   /* Smaller action buttons */

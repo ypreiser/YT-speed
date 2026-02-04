@@ -155,29 +155,62 @@
   letter-spacing: 0.05em;
 }
 
-.yt-speed-custom input[type="number"] {
-  width: 100%;
-  padding: 12px 14px;
-  border: 1px solid var(--yt-border);
-  border-radius: 10px;
-  background: var(--yt-bg-secondary);
-  color: var(--yt-text-primary);
-  font-size: 14px;
-  font-family: inherit;
-  font-weight: 500;
-  text-align: center;
-  transition: all 0.15s ease;
+/* Number input with +/- buttons */
+.yt-speed-number-input {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
 }
 
-.yt-speed-custom input[type="number"]:focus {
+.yt-speed-number-input:focus-within {
   border-color: var(--yt-accent);
-  outline: none;
   box-shadow: 0 0 0 3px var(--yt-accent-glow);
 }
 
-.yt-speed-custom input[type="number"]::-webkit-inner-spin-button,
-.yt-speed-custom input[type="number"]::-webkit-outer-spin-button {
-  opacity: 0.5;
+.yt-speed-number-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  color: var(--yt-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.yt-speed-number-btn:hover {
+  background: var(--yt-accent);
+  color: white;
+}
+
+.yt-speed-number-btn:active {
+  transform: scale(0.95);
+}
+
+.yt-speed-number-btn svg {
+  pointer-events: none;
+}
+
+.yt-speed-number-input input[type="number"] {
+  flex: 1;
+  min-width: 0;
+  color: var(--yt-text-primary);
+  font-family: inherit;
+  font-weight: 500;
+  text-align: center;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.yt-speed-number-input input[type="number"]:focus {
+  outline: none;
+}
+
+.yt-speed-number-input input[type="number"]::-webkit-inner-spin-button,
+.yt-speed-number-input input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
 }
 
 /* Action button */

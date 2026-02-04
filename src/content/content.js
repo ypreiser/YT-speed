@@ -40,6 +40,7 @@
   let didDrag = false;
   let uiCreated = false;
   let hiddenInThisTab = false;
+  let siteDisabled = false; // true when extension is disabled for this site
   let container = null;
   let observer = null;
   let cachedDragDims = null; // cached dimensions during drag
@@ -121,11 +122,50 @@
     maybeShowUI();
   }
 
+  async function disableSite() {
+    siteDisabled = true;
+    await setSiteConfig('disabled', true);
+    resetAllVideosToNative();
+    updateDisabledState();
+  }
+
+  async function enableSite() {
+    siteDisabled = false;
+    await setSiteConfig('disabled', false);
+    applySpeedToAllVideos();
+    updateDisabledState();
+  }
+
+  function updateDisabledState() {
+    if (container) {
+      container.classList.toggle('yt-speed-disabled', siteDisabled);
+    }
+    const disableBtn = document.getElementById('yt-speed-disable-btn');
+    if (disableBtn) {
+      disableBtn.textContent = siteDisabled ? 'Enable' : 'Disable';
+      disableBtn.title = siteDisabled ? 'Enable speed control' : 'Disable speed control (use native)';
+    }
+    const playerBtn = document.querySelector('.yt-speed-player-btn');
+    if (playerBtn) {
+      playerBtn.classList.toggle('yt-speed-player-disabled', siteDisabled);
+    }
+  }
+
+  // Reset all videos to native 1x speed (for when disabled)
+  function resetAllVideosToNative() {
+    document.querySelectorAll("video").forEach((video) => {
+      video.playbackRate = 1.0;
+    });
+  }
+
   // ============ Storage ============
 
   async function loadSettings() {
     try {
       const settings = await getEffectiveSettings();
+      const siteConfig = await getSiteConfig(hostname);
+      const global = await browser.storage.local.get(['disableGlobal']);
+      siteDisabled = global.disableGlobal || siteConfig?.disabled || false;
       defaultSpeed = settings.defaultSpeed;
       currentSpeed = defaultSpeed;
       applySpeedToAllVideos();
@@ -152,6 +192,7 @@
   }
 
   function applySpeedToAllVideos() {
+    if (siteDisabled) return;
     document.querySelectorAll("video").forEach((video) => {
       if (video.playbackRate !== currentSpeed) {
         video.playbackRate = currentSpeed;
@@ -237,13 +278,26 @@
         <div class="yt-speed-presets"></div>
         <div class="yt-speed-custom">
           <label></label>
-          <input type="number" id="yt-speed-custom" step="0.05">
+          <div class="yt-speed-number-input">
+            <button type="button" class="yt-speed-number-btn" id="yt-speed-decrement">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12h14"/>
+              </svg>
+            </button>
+            <input type="number" id="yt-speed-custom" step="0.05">
+            <button type="button" class="yt-speed-number-btn" id="yt-speed-increment">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12h14M12 5v14"/>
+              </svg>
+            </button>
+          </div>
         </div>
         <div class="yt-speed-actions">
           <div class="yt-speed-save-row">
             <button class="yt-speed-action" id="yt-speed-save-site">Save for Site</button>
             <button class="yt-speed-action" id="yt-speed-save-global">Save for All</button>
           </div>
+          <button class="yt-speed-action yt-speed-disable" id="yt-speed-disable-btn">Disable</button>
         </div>
         <div class="yt-speed-info"></div>
       </div>
@@ -296,6 +350,7 @@
     attachUIEventListeners(container);
     loadPosition(container);
     attachDragListeners(container);
+    updateDisabledState();
   }
 
   function attachUIEventListeners(cnt) {
@@ -396,6 +451,14 @@
       }
     });
 
+    // Increment/decrement buttons
+    document.getElementById("yt-speed-decrement").addEventListener("click", () => {
+      setSpeed(Math.max(SPEED_MIN, currentSpeed - 0.25));
+    });
+    document.getElementById("yt-speed-increment").addEventListener("click", () => {
+      setSpeed(Math.min(SPEED_MAX, currentSpeed + 0.25));
+    });
+
     // Save for this site
     saveSiteBtn.addEventListener("click", () => {
       saveDefaultSpeed(currentSpeed);
@@ -430,6 +493,16 @@
       setSpeed(DEFAULT_SPEED);
       saveDefaultSpeed(DEFAULT_SPEED);
       updateSpeedDisplay();
+    });
+
+    // Disable button
+    const disableBtn = document.getElementById("yt-speed-disable-btn");
+    disableBtn.addEventListener("click", () => {
+      if (siteDisabled) {
+        enableSite();
+      } else {
+        disableSite();
+      }
     });
 
     // Close panel when clicking outside
@@ -624,6 +697,11 @@
 
     // Insert at the beginning of right controls
     rightControls.insertBefore(btn, rightControls.firstChild);
+
+    // Apply disabled state if needed
+    if (siteDisabled) {
+      btn.classList.add('yt-speed-player-disabled');
+    }
   }
 
   // ============ Video Observer ============
@@ -670,6 +748,7 @@
 
     // Handle video play events - store reference for cleanup
     playHandler = (e) => {
+      if (siteDisabled) return;
       if (e.target.tagName === "VIDEO") {
         e.target.playbackRate = currentSpeed;
       }
@@ -678,6 +757,7 @@
 
     // Override YouTube's speed reset attempts with exponential backoff
     ratechangeHandler = (e) => {
+      if (siteDisabled) return;
       if (
         e.target.tagName === "VIDEO" &&
         e.target.playbackRate !== currentSpeed
@@ -733,15 +813,21 @@
       hideButton(message.scope);
     } else if (message.action === 'showButton') {
       showButton(message.scope);
+    } else if (message.action === 'disableSite') {
+      disableSite();
+    } else if (message.action === 'enableSite') {
+      enableSite();
     } else if (message.action === 'getVisibility') {
       (async () => {
         const siteConfig = await getSiteConfig(hostname);
-        const global = await browser.storage.local.get(['hideGlobal']);
+        const global = await browser.storage.local.get(['hideGlobal', 'disableGlobal']);
         sendResponse({
           hasVideo: hasVideo(),
           hiddenTab: hiddenInThisTab,
           hiddenSite: siteConfig?.hidden || false,
           hiddenGlobal: global.hideGlobal || false,
+          disabledSite: siteConfig?.disabled || false,
+          disabledGlobal: global.disableGlobal || false,
           hostname
         });
       })();

@@ -8,7 +8,7 @@
   const SPEED_MIN = 0.25;
   const SPEED_MAX = 16;
   const DEFAULT_SPEED = 1;
-  const VALID_CONFIG_KEYS = ['defaultSpeed', 'hideGlobal', 'panelPosition', 'siteConfigs'];
+  const VALID_CONFIG_KEYS = ['defaultSpeed', 'hideGlobal', 'disableGlobal', 'panelPosition', 'siteConfigs'];
 
   function clampSpeed(speed) {
     return Math.max(SPEED_MIN, Math.min(SPEED_MAX, speed));
@@ -35,6 +35,7 @@
     }
     if (data.defaultSpeed !== undefined && !validateSpeed(data.defaultSpeed)) return false;
     if (data.hideGlobal !== undefined && typeof data.hideGlobal !== 'boolean') return false;
+    if (data.disableGlobal !== undefined && typeof data.disableGlobal !== 'boolean') return false;
     if (data.panelPosition !== undefined) {
       if (typeof data.panelPosition !== 'object' || data.panelPosition === null) return false;
       if (typeof data.panelPosition.x !== 'number' || typeof data.panelPosition.y !== 'number') return false;
@@ -45,6 +46,7 @@
         if (typeof cfg !== 'object' || cfg === null) return false;
         if (cfg.defaultSpeed !== undefined && !validateSpeed(cfg.defaultSpeed)) return false;
         if (cfg.hidden !== undefined && typeof cfg.hidden !== 'boolean') return false;
+        if (cfg.disabled !== undefined && typeof cfg.disabled !== 'boolean') return false;
       }
     }
     return true;

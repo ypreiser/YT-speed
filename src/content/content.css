@@ -224,10 +224,65 @@
   font-family: 'YouTube Noto', Roboto, Arial, sans-serif;
 }
 
+.yt-speed-player-btn.yt-speed-player-disabled .yt-speed-player-text {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+/* Number input with buttons */
+#yt-speed-control .yt-speed-number-input {
+  height: 44px;
+  background: var(--yt-bg-secondary);
+  border: 1px solid var(--yt-border);
+  border-radius: 10px;
+}
+
+#yt-speed-control .yt-speed-number-input input[type="number"] {
+  padding: 10px 8px;
+  font-size: 14px;
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--yt-border);
+  border-right: 1px solid var(--yt-border);
+}
+
+#yt-speed-control .yt-speed-number-btn {
+  width: 40px;
+  height: 100%;
+  background: var(--yt-bg-hover);
+}
+
+#yt-speed-control .yt-speed-number-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
 /* Landscape mobile - enable scrolling when viewport height is limited */
 @media (max-height: 500px) and (orientation: landscape) {
   #yt-speed-panel {
     max-height: calc(100vh - 100px);
     overflow-y: auto;
   }
+}
+
+/* Disabled state - speed control inactive */
+#yt-speed-control.yt-speed-disabled #yt-speed-toggle {
+  opacity: 0.5;
+  border-style: dashed;
+  text-decoration: line-through;
+}
+
+#yt-speed-control.yt-speed-disabled .yt-speed-display-container,
+#yt-speed-control.yt-speed-disabled .yt-speed-slider,
+#yt-speed-control.yt-speed-disabled .yt-speed-presets,
+#yt-speed-control.yt-speed-disabled .yt-speed-custom,
+#yt-speed-control.yt-speed-disabled .yt-speed-reset,
+#yt-speed-control.yt-speed-disabled .yt-speed-save-row {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.yt-speed-disable {
+  width: 100%;
+  margin-top: 8px;
 }

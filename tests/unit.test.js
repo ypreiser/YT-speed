@@ -185,6 +185,100 @@ describe('Site Config Merging', () => {
   });
 });
 
+describe('Disabled vs Hidden State', () => {
+  // Simulates the separate visibility and speed control logic
+  function shouldHideUI(siteConfig, globalConfig, hiddenInTab) {
+    if (hiddenInTab) return true;
+    return globalConfig?.hideGlobal || siteConfig?.hidden || false;
+  }
+
+  function shouldDisableSpeedControl(siteConfig, globalConfig) {
+    return globalConfig?.disableGlobal || siteConfig?.disabled || false;
+  }
+
+  test('hidden only hides UI, does not disable speed', () => {
+    const site = { hidden: true, disabled: false };
+    expect(shouldHideUI(site, {}, false)).toBe(true);
+    expect(shouldDisableSpeedControl(site, {})).toBe(false);
+  });
+
+  test('disabled only disables speed, does not hide UI', () => {
+    const site = { hidden: false, disabled: true };
+    expect(shouldHideUI(site, {}, false)).toBe(false);
+    expect(shouldDisableSpeedControl(site, {})).toBe(true);
+  });
+
+  test('both hidden and disabled can be set independently', () => {
+    const site = { hidden: true, disabled: true };
+    expect(shouldHideUI(site, {}, false)).toBe(true);
+    expect(shouldDisableSpeedControl(site, {})).toBe(true);
+  });
+
+  test('neither hidden nor disabled by default', () => {
+    const site = {};
+    expect(shouldHideUI(site, {}, false)).toBe(false);
+    expect(shouldDisableSpeedControl(site, {})).toBe(false);
+  });
+
+  test('global hide does not affect disabled state', () => {
+    const site = { disabled: false };
+    const global = { hideGlobal: true };
+    expect(shouldHideUI(site, global, false)).toBe(true);
+    expect(shouldDisableSpeedControl(site, global)).toBe(false);
+  });
+
+  test('tab hidden does not affect disabled state', () => {
+    const site = { disabled: false };
+    expect(shouldHideUI(site, {}, true)).toBe(true);
+    expect(shouldDisableSpeedControl(site, {})).toBe(false);
+  });
+
+  test('global disable overrides site enabled', () => {
+    const site = { disabled: false };
+    const global = { disableGlobal: true };
+    expect(shouldDisableSpeedControl(site, global)).toBe(true);
+  });
+
+  test('site disabled works without global disable', () => {
+    const site = { disabled: true };
+    const global = { disableGlobal: false };
+    expect(shouldDisableSpeedControl(site, global)).toBe(true);
+  });
+});
+
+describe('Speed Control When Disabled', () => {
+  // Simulates applySpeedToAllVideos behavior
+  function applySpeed(videos, speed, siteDisabled) {
+    if (siteDisabled) return videos; // no change
+    return videos.map(v => ({ ...v, playbackRate: speed }));
+  }
+
+  function resetToNative(videos) {
+    return videos.map(v => ({ ...v, playbackRate: 1.0 }));
+  }
+
+  test('applies speed when not disabled', () => {
+    const videos = [{ playbackRate: 1 }, { playbackRate: 1 }];
+    const result = applySpeed(videos, 2, false);
+    expect(result[0].playbackRate).toBe(2);
+    expect(result[1].playbackRate).toBe(2);
+  });
+
+  test('does not apply speed when disabled', () => {
+    const videos = [{ playbackRate: 1.5 }, { playbackRate: 1.5 }];
+    const result = applySpeed(videos, 2, true);
+    expect(result[0].playbackRate).toBe(1.5);
+    expect(result[1].playbackRate).toBe(1.5);
+  });
+
+  test('resets to native 1x when disabling', () => {
+    const videos = [{ playbackRate: 2.5 }, { playbackRate: 1.75 }];
+    const result = resetToNative(videos);
+    expect(result[0].playbackRate).toBe(1);
+    expect(result[1].playbackRate).toBe(1);
+  });
+});
+
 describe('Settings Export/Import Format', () => {
   test('exported data is valid JSON', () => {
     const data = {
@@ -427,6 +521,17 @@ describe('validateImportData', () => {
     expect(validateImportData({ hideGlobal: null })).toBe(false);
   });
 
+  test('accepts valid disableGlobal', () => {
+    expect(validateImportData({ disableGlobal: true })).toBe(true);
+    expect(validateImportData({ disableGlobal: false })).toBe(true);
+  });
+
+  test('rejects invalid disableGlobal type', () => {
+    expect(validateImportData({ disableGlobal: 'true' })).toBe(false);
+    expect(validateImportData({ disableGlobal: 1 })).toBe(false);
+    expect(validateImportData({ disableGlobal: null })).toBe(false);
+  });
+
   test('rejects invalid panelPosition structure', () => {
     expect(validateImportData({ panelPosition: null })).toBe(false);
     expect(validateImportData({ panelPosition: 'top-left' })).toBe(false);
@@ -447,6 +552,30 @@ describe('validateImportData', () => {
     })).toBe(false);
     expect(validateImportData({
       siteConfigs: { 'youtube.com': { hidden: 1 } }
+    })).toBe(false);
+  });
+
+  test('accepts valid disabled field in siteConfigs', () => {
+    expect(validateImportData({
+      siteConfigs: { 'youtube.com': { disabled: true } }
+    })).toBe(true);
+    expect(validateImportData({
+      siteConfigs: { 'youtube.com': { disabled: false } }
+    })).toBe(true);
+    expect(validateImportData({
+      siteConfigs: { 'youtube.com': { hidden: true, disabled: true } }
+    })).toBe(true);
+  });
+
+  test('rejects invalid disabled type in siteConfigs', () => {
+    expect(validateImportData({
+      siteConfigs: { 'youtube.com': { disabled: 'yes' } }
+    })).toBe(false);
+    expect(validateImportData({
+      siteConfigs: { 'youtube.com': { disabled: 1 } }
+    })).toBe(false);
+    expect(validateImportData({
+      siteConfigs: { 'youtube.com': { disabled: null } }
     })).toBe(false);
   });
 });

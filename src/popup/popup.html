@@ -4,77 +4,93 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>YouTube Speed Control</title>
+    <link rel="stylesheet" href="../shared/shared.css" />
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
-    <div class="yt-speed-header">
-      <span>PLAYBACK SPEED</span>
-      <div class="yt-speed-header-actions">
-        <button class="yt-speed-settings" id="settings-btn" title="Settings">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.08a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.08a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>
-          </svg>
-        </button>
-        <button class="yt-speed-close" id="close-btn">×</button>
+    <div id="yt-speed-popup">
+      <div class="yt-speed-header">
+        <span>PLAYBACK SPEED</span>
+        <div class="yt-speed-header-actions">
+          <button class="yt-speed-settings" id="settings-btn" title="Settings">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.08a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.08a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>
+            </svg>
+          </button>
+          <button class="yt-speed-close" id="close-btn">×</button>
+        </div>
       </div>
-    </div>
 
-    <div class="yt-speed-display-container">
-      <div class="yt-speed-current" id="current-speed">1x</div>
-      <div class="yt-speed-label">CURRENT SPEED</div>
-    </div>
-
-    <div class="yt-speed-slider">
-      <input
-        type="range"
-        id="speed-slider"
-        min="0.25"
-        max="16"
-        step="0.05"
-        value="1"
-        aria-label="Playback speed slider"
-      />
-    </div>
-
-    <button class="yt-speed-action yt-speed-reset" id="reset-btn">Reset to 1x</button>
-
-    <div class="yt-speed-presets">
-      <button class="yt-speed-preset" data-speed="0.25">0.25x</button>
-      <button class="yt-speed-preset" data-speed="0.5">0.5x</button>
-      <button class="yt-speed-preset" data-speed="0.75">0.75x</button>
-      <button class="yt-speed-preset" data-speed="1.25">1.25x</button>
-      <button class="yt-speed-preset" data-speed="1.5">1.5x</button>
-      <button class="yt-speed-preset" data-speed="1.75">1.75x</button>
-      <button class="yt-speed-preset" data-speed="2">2x</button>
-      <button class="yt-speed-preset" data-speed="2.25">2.25x</button>
-      <button class="yt-speed-preset" data-speed="2.5">2.5x</button>
-      <button class="yt-speed-preset" data-speed="2.75">2.75x</button>
-      <button class="yt-speed-preset" data-speed="3">3x</button>
-      <button class="yt-speed-preset" data-speed="4">4x</button>
-    </div>
-
-    <div class="yt-speed-custom">
-      <label for="speed-input">CUSTOM SPEED (0.25x – 16x)</label>
-      <input
-        type="number"
-        id="speed-input"
-        min="0.25"
-        max="16"
-        step="0.05"
-        value="1"
-        aria-label="Custom playback speed"
-      />
-    </div>
-
-    <div class="yt-speed-actions">
-      <div class="yt-speed-save-row">
-        <button class="yt-speed-action" id="save-site-btn">Save for Site</button>
-        <button class="yt-speed-action" id="save-global-btn">Save for All</button>
+      <div class="yt-speed-display-container">
+        <div class="yt-speed-current" id="current-speed">1x</div>
+        <div class="yt-speed-label">CURRENT SPEED</div>
       </div>
-    </div>
 
-    <div class="yt-speed-info" id="default-info">Current Default Speed: 1x (this site)</div>
+      <div class="yt-speed-slider">
+        <input
+          type="range"
+          id="speed-slider"
+          min="0.25"
+          max="16"
+          step="0.05"
+          value="1"
+          aria-label="Playback speed slider"
+        />
+      </div>
+
+      <button class="yt-speed-action yt-speed-reset" id="reset-btn">Reset to 1x</button>
+
+      <div class="yt-speed-presets">
+        <button class="yt-speed-preset" data-speed="0.25">0.25x</button>
+        <button class="yt-speed-preset" data-speed="0.5">0.5x</button>
+        <button class="yt-speed-preset" data-speed="0.75">0.75x</button>
+        <button class="yt-speed-preset" data-speed="1.25">1.25x</button>
+        <button class="yt-speed-preset" data-speed="1.5">1.5x</button>
+        <button class="yt-speed-preset" data-speed="1.75">1.75x</button>
+        <button class="yt-speed-preset" data-speed="2">2x</button>
+        <button class="yt-speed-preset" data-speed="2.25">2.25x</button>
+        <button class="yt-speed-preset" data-speed="2.5">2.5x</button>
+        <button class="yt-speed-preset" data-speed="2.75">2.75x</button>
+        <button class="yt-speed-preset" data-speed="3">3x</button>
+        <button class="yt-speed-preset" data-speed="4">4x</button>
+      </div>
+
+      <div class="yt-speed-custom">
+        <label>CUSTOM SPEED (0.25x – 16x)</label>
+        <div class="yt-speed-number-input">
+          <button type="button" class="yt-speed-number-btn" id="speed-decrement" aria-label="Decrease speed">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14"/>
+            </svg>
+          </button>
+          <input
+            type="number"
+            id="speed-input"
+            min="0.25"
+            max="16"
+            step="0.05"
+            value="1"
+            aria-label="Custom playback speed"
+          />
+          <button type="button" class="yt-speed-number-btn" id="speed-increment" aria-label="Increase speed">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5v14"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="yt-speed-actions">
+        <div class="yt-speed-save-row">
+          <button class="yt-speed-action" id="save-site-btn">Save for Site</button>
+          <button class="yt-speed-action" id="save-global-btn">Save for All</button>
+        </div>
+        <button class="yt-speed-action yt-speed-disable" id="disable-site-btn">Disable</button>
+      </div>
+
+      <div class="yt-speed-info" id="default-info">Default: 1x (this site)</div>
+    </div>
 
     <script src="../shared/utils.js"></script>
     <script src="popup.js"></script>

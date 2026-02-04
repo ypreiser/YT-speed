@@ -7,8 +7,10 @@
 
   let currentSpeed = DEFAULT_SPEED;
   let defaultSpeed = DEFAULT_SPEED;
+  let siteDisabled = false;
 
   // DOM Elements
+  const popupContainer = document.getElementById('yt-speed-popup');
   const currentSpeedDisplay = document.getElementById('current-speed');
   const speedSlider = document.getElementById('speed-slider');
   const speedInput = document.getElementById('speed-input');
@@ -19,6 +21,7 @@
   const settingsBtn = document.getElementById('settings-btn');
   const defaultInfo = document.getElementById('default-info');
   const presetBtns = document.querySelectorAll('.yt-speed-preset');
+  const disableSiteBtn = document.getElementById('disable-site-btn');
 
   // Send message to content script
   function sendSpeedToTab(speed) {
@@ -42,12 +45,27 @@
         }).catch(() => {
           loadFromStorage();
         });
+
+        // Get visibility state
+        browser.tabs.sendMessage(tabs[0].id, { action: 'getVisibility' }).then((response) => {
+          if (response) {
+            siteDisabled = response.disabledSite || response.disabledGlobal;
+            updateDisabledState();
+          }
+        }).catch(() => {});
       } else {
         loadFromStorage();
       }
     }).catch(() => {
       loadFromStorage();
     });
+  }
+
+  // Update disabled state for speed controls
+  function updateDisabledState() {
+    popupContainer.classList.toggle('yt-speed-disabled', siteDisabled);
+    disableSiteBtn.textContent = siteDisabled ? 'Enable' : 'Disable';
+    disableSiteBtn.title = siteDisabled ? 'Enable speed control' : 'Disable speed control (use native)';
   }
 
   // Fallback to storage
@@ -143,6 +161,17 @@
     if (e.key === 'Enter') saveSiteBtn.click();
   });
 
+  // Increment/decrement buttons
+  document.getElementById('speed-decrement').addEventListener('click', () => {
+    const newSpeed = Math.max(SPEED_MIN, currentSpeed - 0.25);
+    setSpeed(newSpeed);
+  });
+
+  document.getElementById('speed-increment').addEventListener('click', () => {
+    const newSpeed = Math.min(SPEED_MAX, currentSpeed + 0.25);
+    setSpeed(newSpeed);
+  });
+
   presetBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
       setSpeed(parseFloat(btn.dataset.speed));
@@ -155,6 +184,18 @@
   resetBtn.addEventListener('click', () => {
     setSpeed(DEFAULT_SPEED);
     saveSiteSpeed(DEFAULT_SPEED);
+  });
+
+  // Disable button
+  disableSiteBtn.addEventListener('click', () => {
+    siteDisabled = !siteDisabled;
+    updateDisabledState();
+    browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
+      if (tabs[0]?.id) {
+        const action = siteDisabled ? 'disableSite' : 'enableSite';
+        browser.tabs.sendMessage(tabs[0].id, { action }).catch(() => {});
+      }
+    });
   });
 
   // Initialize

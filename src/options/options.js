@@ -22,6 +22,7 @@
   }
 
   const hideGlobalCheckbox = document.getElementById('hide-global');
+  const disableGlobalCheckbox = document.getElementById('disable-global');
   const globalSpeedInput = document.getElementById('global-speed');
   const siteConfigsList = document.getElementById('site-configs-list');
   const exportBtn = document.getElementById('export-btn');
@@ -34,6 +35,7 @@
     const data = await browser.storage.local.get(null);
 
     hideGlobalCheckbox.checked = data.hideGlobal || false;
+    disableGlobalCheckbox.checked = data.disableGlobal || false;
     globalSpeedInput.value = data.defaultSpeed || 1;
 
     renderSiteConfigs(data.siteConfigs || {});
@@ -66,7 +68,11 @@
       infoDiv.className = "site-config-info";
       const detailsDiv = document.createElement("div");
       detailsDiv.className = "site-config-details";
-      detailsDiv.textContent = "Speed: " + (config.defaultSpeed || 1) + "x · " + (config.hidden ? "Hidden" : "Visible");
+      const statusParts = [];
+      statusParts.push("Speed: " + (config.defaultSpeed || 1) + "x");
+      if (config.disabled) statusParts.push("Disabled");
+      else if (config.hidden) statusParts.push("Hidden");
+      detailsDiv.textContent = statusParts.join(" · ");
       infoDiv.appendChild(detailsDiv);
 
       const actionsDiv = document.createElement("div");
@@ -91,6 +97,15 @@
       speedRow.className = "editor-row";
       const speedLabel = document.createElement("label");
       speedLabel.textContent = "Speed";
+
+      const speedWrapper = document.createElement("div");
+      speedWrapper.className = "yt-speed-number-input editor-number-input";
+
+      const decrementBtn = document.createElement("button");
+      decrementBtn.type = "button";
+      decrementBtn.className = "yt-speed-number-btn";
+      decrementBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>';
+
       const speedInput = document.createElement("input");
       speedInput.type = "number";
       speedInput.className = "editor-speed";
@@ -98,8 +113,25 @@
       speedInput.max = SPEED_MAX;
       speedInput.step = "0.25";
       speedInput.value = config.defaultSpeed || 1;
+
+      const incrementBtn = document.createElement("button");
+      incrementBtn.type = "button";
+      incrementBtn.className = "yt-speed-number-btn";
+      incrementBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg>';
+
+      decrementBtn.addEventListener("click", () => {
+        speedInput.value = clampSpeed(parseFloat(speedInput.value) - 0.25);
+      });
+      incrementBtn.addEventListener("click", () => {
+        speedInput.value = clampSpeed(parseFloat(speedInput.value) + 0.25);
+      });
+
+      speedWrapper.appendChild(decrementBtn);
+      speedWrapper.appendChild(speedInput);
+      speedWrapper.appendChild(incrementBtn);
+
       speedRow.appendChild(speedLabel);
-      speedRow.appendChild(speedInput);
+      speedRow.appendChild(speedWrapper);
 
       const hiddenRow = document.createElement("div");
       hiddenRow.className = "editor-row";
@@ -109,8 +141,19 @@
       hiddenCheckbox.className = "editor-hidden";
       hiddenCheckbox.checked = config.hidden || false;
       hiddenLabel.appendChild(hiddenCheckbox);
-      hiddenLabel.appendChild(document.createTextNode(" Hidden"));
+      hiddenLabel.appendChild(document.createTextNode(" Hide UI"));
       hiddenRow.appendChild(hiddenLabel);
+
+      const disabledRow = document.createElement("div");
+      disabledRow.className = "editor-row";
+      const disabledLabel = document.createElement("label");
+      const disabledCheckbox = document.createElement("input");
+      disabledCheckbox.type = "checkbox";
+      disabledCheckbox.className = "editor-disabled";
+      disabledCheckbox.checked = config.disabled || false;
+      disabledLabel.appendChild(disabledCheckbox);
+      disabledLabel.appendChild(document.createTextNode(" Disable extension"));
+      disabledRow.appendChild(disabledLabel);
 
       const editorActions = document.createElement("div");
       editorActions.className = "editor-actions";
@@ -125,6 +168,7 @@
 
       editorDiv.appendChild(speedRow);
       editorDiv.appendChild(hiddenRow);
+      editorDiv.appendChild(disabledRow);
       editorDiv.appendChild(editorActions);
 
       item.appendChild(nameDiv);
@@ -153,10 +197,11 @@
         const speedInput = item.querySelector('.editor-speed');
         const speed = parseFloat(speedInput.value);
         const hidden = item.querySelector('.editor-hidden').checked;
+        const disabled = item.querySelector('.editor-disabled').checked;
 
         // Validate and clamp speed
         const clampedSpeed = clampSpeed(speed);
-        await updateSiteConfig(site, { defaultSpeed: clampedSpeed, hidden });
+        await updateSiteConfig(site, { defaultSpeed: clampedSpeed, hidden, disabled });
       });
 
       // Cancel button
@@ -188,6 +233,10 @@
     await browser.storage.local.set({ hideGlobal: hideGlobalCheckbox.checked });
   });
 
+  disableGlobalCheckbox.addEventListener('change', async () => {
+    await browser.storage.local.set({ disableGlobal: disableGlobalCheckbox.checked });
+  });
+
   globalSpeedInput.addEventListener('change', async () => {
     const speed = parseFloat(globalSpeedInput.value);
     if (validateSpeed(speed)) {
@@ -200,6 +249,21 @@
       const data = await browser.storage.local.get('defaultSpeed');
       globalSpeedInput.value = data.defaultSpeed || 1;
     }
+  });
+
+  // Increment/decrement buttons for global speed
+  document.getElementById('global-speed-decrement').addEventListener('click', async () => {
+    const current = parseFloat(globalSpeedInput.value) || 1;
+    const newSpeed = clampSpeed(current - 0.25);
+    globalSpeedInput.value = newSpeed;
+    await browser.storage.local.set({ defaultSpeed: newSpeed });
+  });
+
+  document.getElementById('global-speed-increment').addEventListener('click', async () => {
+    const current = parseFloat(globalSpeedInput.value) || 1;
+    const newSpeed = clampSpeed(current + 0.25);
+    globalSpeedInput.value = newSpeed;
+    await browser.storage.local.set({ defaultSpeed: newSpeed });
   });
 
   // Export settings
