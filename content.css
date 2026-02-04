@@ -347,6 +347,42 @@
   font-family: "YouTube Noto", Roboto, Arial, sans-serif;
 }
 
+/* Mobile player button */
+.yt-speed-player-btn-mobile {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  min-width: 44px !important;
+  height: 44px !important;
+  padding: 0 12px !important;
+  margin: 0 4px !important;
+  color: white !important;
+  background: rgba(0, 0, 0, 0.6) !important;
+  border: none !important;
+  border-radius: 22px !important;
+  opacity: 1 !important;
+  cursor: pointer !important;
+  -webkit-user-select: none;
+  user-select: none;
+  position: relative;
+  z-index: 100;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.yt-speed-player-btn-mobile:active {
+  background: rgba(255, 255, 255, 0.2) !important;
+  transform: scale(0.95);
+}
+
+.yt-speed-player-btn-mobile .yt-speed-player-text {
+  font-family: "YouTube Noto", Roboto, Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 /* Mobile responsive */
 @media (max-width: 500px) {
   #yt-speed-control {

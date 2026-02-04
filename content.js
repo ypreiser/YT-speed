@@ -227,8 +227,16 @@
   function createPlayerControl() {
     if (document.querySelector(".yt-speed-player-btn")) return;
 
+    // Desktop: .ytp-right-controls
+    // Mobile: .player-controls-top, .ytm-slim-video-action-bar-renderer, bottom-sheet controls
     const rightControls = document.querySelector(".ytp-right-controls");
-    if (!rightControls) return;
+    const mobileTopControls = document.querySelector(".player-controls-top");
+    const mobileActionBar = document.querySelector(".ytm-slim-video-action-bar-renderer");
+
+    const targetContainer = rightControls || mobileTopControls || mobileActionBar;
+    if (!targetContainer) return;
+
+    const isMobile = !rightControls;
 
     // Inject toggle function into page context (only once)
     if (!playerControlInjected) {
@@ -256,7 +264,9 @@
 
     // Create button with inline onclick
     const btn = document.createElement("button");
-    btn.className = "yt-speed-player-btn ytp-button";
+    btn.className = isMobile
+      ? "yt-speed-player-btn yt-speed-player-btn-mobile"
+      : "yt-speed-player-btn ytp-button";
     btn.title = "Playback Speed";
     btn.setAttribute(
       "onclick",
@@ -267,8 +277,16 @@
     span.textContent = `${currentSpeed}x`;
     btn.appendChild(span);
 
-    // Insert at the beginning of right controls
-    rightControls.insertBefore(btn, rightControls.firstChild);
+    // Insert button into container
+    if (rightControls) {
+      rightControls.insertBefore(btn, rightControls.firstChild);
+    } else if (mobileTopControls) {
+      // For mobile top controls, append at the end (right side)
+      mobileTopControls.appendChild(btn);
+    } else if (mobileActionBar) {
+      // For mobile action bar, insert at the beginning
+      mobileActionBar.insertBefore(btn, mobileActionBar.firstChild);
+    }
   }
 
   // ============ Video Observer ============
@@ -283,7 +301,15 @@
           if (node.nodeName === "VIDEO" || node.querySelector?.("video")) {
             hasNewVideo = true;
           }
-          if (node.querySelector?.(".ytp-settings-button")) {
+          // Desktop: .ytp-settings-button
+          // Mobile: .player-controls-top, .ytm-slim-video-action-bar-renderer
+          if (
+            node.querySelector?.(".ytp-settings-button") ||
+            node.querySelector?.(".player-controls-top") ||
+            node.querySelector?.(".ytm-slim-video-action-bar-renderer") ||
+            node.classList?.contains("player-controls-top") ||
+            node.classList?.contains("ytm-slim-video-action-bar-renderer")
+          ) {
             hasPlayerControls = true;
           }
         }
