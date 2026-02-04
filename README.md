@@ -11,6 +11,7 @@ A lightweight Firefox extension for controlling video playback speed on any webs
 - **Draggable UI** - Floating panel that remembers position per-site
 - **Quick Presets** - One-tap access to common speeds (0.25x - 4x)
 - **Hide Options** - Hide button for this tab, this site, or all sites
+- **Disable Options** - Disable speed control per-site or globally (use native player)
 - **Export/Import** - Backup and restore all settings
 - **Mobile-Friendly** - Works on Firefox for Android
 
@@ -46,13 +47,15 @@ A lightweight Firefox extension for controlling video playback speed on any webs
 - **Save for All** - Save speed as global default (all sites)
 - **Reset to 1x** - Reset speed and site default to 1x
 - **Hide button** - Hide for this tab, this site, or all sites
+- **Disable button** - Disable speed control (use native player controls)
 - **Settings** - Open options page
 
 ### Options Page
 
 - Global default speed (used when no site-specific default)
 - Global hide toggle (hides button on all sites)
-- Per-site configuration list (edit speed, visibility; delete)
+- Global disable toggle (disables speed control on all sites)
+- Per-site configuration list (edit speed, visibility, disabled; delete)
 - Export/import settings (JSON backup)
 - Reset all settings
 

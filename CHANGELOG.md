@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.3
+
+- Add disable feature (per-site and global) - stops speed control, uses native player
+- Popup redesigned to match floating panel
+- Custom +/- number inputs in popup and options
+- Strikethrough indicators when disabled
+- 71 unit tests
+
 ## 1.1.2
 
 - Fix flaky E2E tests (drag bounds, UI waits, test isolation)
