@@ -60,6 +60,7 @@
   let observerDebounceTimer = null; // MutationObserver debounce
   let playHandler = null; // stored for cleanup
   let ratechangeHandler = null; // stored for cleanup
+  let cachedUIElements = null; // cached DOM refs for updateSpeedDisplay
 
   // ============ Site Config ============
 
@@ -178,11 +179,16 @@
 
   async function loadSettings() {
     try {
-      const settings = await getEffectiveSettings();
-      const siteConfig = await getSiteConfig(hostname);
-      const global = await browser.storage.local.get(['disableGlobal']);
-      siteDisabled = global.disableGlobal || siteConfig?.disabled || false;
-      defaultSpeed = settings.defaultSpeed;
+      // Batch storage read: fetch all needed keys in one call
+      const storage = await browser.storage.local.get([
+        'siteConfigs', 'defaultSpeed', 'hideGlobal', 'disableGlobal', 'panelPosition'
+      ]);
+      const siteConfigs = storage.siteConfigs || {};
+      const normalized = normalizeHostname(hostname);
+      const siteConfig = siteConfigs[normalized] || siteConfigs[hostname] || null;
+
+      siteDisabled = storage.disableGlobal || siteConfig?.disabled || false;
+      defaultSpeed = siteConfig?.defaultSpeed ?? storage.defaultSpeed ?? 1.0;
       currentSpeed = defaultSpeed;
       applySpeedToAllVideos();
       updateSpeedDisplay();
@@ -229,32 +235,40 @@
 
   // ============ UI Updates ============
 
-  function updateSpeedDisplay() {
-    const elements = {
+  function cacheUIElements() {
+    cachedUIElements = {
       toggle: document.getElementById("yt-speed-toggle"),
       display: document.getElementById("yt-speed-display"),
       customInput: document.getElementById("yt-speed-custom"),
       rangeInput: document.getElementById("yt-speed-range"),
       infoText: document.querySelector(".yt-speed-info"),
       playerText: document.querySelector(".yt-speed-player-text"),
+      presets: document.querySelectorAll(".yt-speed-preset"),
     };
+  }
 
-    if (elements.toggle) elements.toggle.textContent = `${currentSpeed}x`;
-    if (elements.display) elements.display.textContent = `${currentSpeed}x`;
-    if (elements.customInput) elements.customInput.value = currentSpeed;
-    if (elements.rangeInput) elements.rangeInput.value = currentSpeed;
-    if (elements.infoText)
-      elements.infoText.textContent = `Default: ${defaultSpeed}x (this site)`;
-    if (elements.playerText)
-      elements.playerText.textContent = `${currentSpeed}x`;
+  function updateSpeedDisplay() {
+    const el = cachedUIElements;
+    if (!el) return;
 
-    // Update preset buttons
-    document.querySelectorAll(".yt-speed-preset").forEach((btn) => {
-      btn.classList.toggle(
-        "active",
-        parseFloat(btn.dataset.speed) === currentSpeed,
-      );
-    });
+    if (el.toggle) el.toggle.textContent = `${currentSpeed}x`;
+    if (el.display) el.display.textContent = `${currentSpeed}x`;
+    if (el.customInput) el.customInput.value = currentSpeed;
+    if (el.rangeInput) el.rangeInput.value = currentSpeed;
+    if (el.infoText)
+      el.infoText.textContent = `Default: ${defaultSpeed}x (this site)`;
+    if (el.playerText)
+      el.playerText.textContent = `${currentSpeed}x`;
+
+    // Update preset buttons (cached)
+    if (el.presets) {
+      el.presets.forEach((btn) => {
+        btn.classList.toggle(
+          "active",
+          parseFloat(btn.dataset.speed) === currentSpeed,
+        );
+      });
+    }
   }
 
   // ============ Floating UI ============
@@ -368,6 +382,7 @@
     });
 
     document.body.appendChild(container);
+    cacheUIElements();
     attachUIEventListeners(container);
     loadPosition(container);
     attachDragListeners(container);
@@ -435,7 +450,7 @@
     // Close hide menu when clicking elsewhere
     document.addEventListener("click", () => {
       hideMenu.classList.remove("visible");
-    });
+    }, { passive: true });
 
     // Settings button - send message to background to open options
     const settingsBtn = document.querySelector(".yt-speed-settings");
@@ -533,7 +548,7 @@
         uiVisible = false;
         panel.classList.remove("visible");
       }
-    });
+    }, { passive: true });
   }
 
   // ============ Drag & Position ============
@@ -576,7 +591,7 @@
       y = Math.max(0, Math.min(y, window.innerHeight - h));
       container.style.left = x + "px";
       container.style.top = y + "px";
-    });
+    }, { passive: true });
 
     document.addEventListener("mouseup", () => {
       if (isDragging) {
@@ -584,7 +599,7 @@
         cachedDragDims = null;
         if (didDrag) savePosition(container);
       }
-    });
+    }, { passive: true });
 
     // Touch events
     toggle.addEventListener("touchstart", (e) => {
@@ -629,9 +644,9 @@
         cachedDragDims = null;
         if (didDrag) savePosition(container);
       }
-    });
+    }, { passive: true });
 
-    window.addEventListener("resize", () => snapToScreen(container));
+    window.addEventListener("resize", () => snapToScreen(container), { passive: true });
   }
 
   function snapToScreen(el, save = true) {
@@ -719,6 +734,11 @@
 
     // Insert at the beginning of right controls
     rightControls.insertBefore(btn, rightControls.firstChild);
+
+    // Update cache with new player text element
+    if (cachedUIElements) {
+      cachedUIElements.playerText = span;
+    }
 
     // Apply disabled state if needed
     if (siteDisabled) {
