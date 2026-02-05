@@ -6,6 +6,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
     browser.tabs.query({}).then((tabs) => {
       tabs.forEach((tab) => {
         if (tab.id !== sender.tab?.id) {
+          // Silent catch: tabs without content script will always fail
           browser.tabs.sendMessage(tab.id, {
             action: 'setDefaultSpeed',
             speed: message.speed,

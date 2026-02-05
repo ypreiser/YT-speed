@@ -3,7 +3,14 @@
   "use strict";
 
   // Import from shared utils
-  const { SPEED_MIN, SPEED_MAX, DEFAULT_SPEED, clampSpeed, roundSpeed, normalizeHostname } = window.YTSpeedUtils;
+  const {
+    SPEED_MIN, SPEED_MAX, DEFAULT_SPEED, SPEED_STEP,
+    UI_TOGGLE_SIZE, UI_MARGIN, MIN_VIDEO_SIZE,
+    DEBOUNCE_SPEED_MS, DEBOUNCE_OBSERVER_MS, FEEDBACK_DURATION_MS,
+    INIT_RETRY_MS, SETUP_RETRY_DELAYS,
+    ENFORCE_BACKOFF_DELAYS, ENFORCE_MAX_ATTEMPTS,
+    clampSpeed, roundSpeed, normalizeHostname
+  } = window.YTSpeedUtils;
 
   // Local constants
   const SPEED_PRESETS = [
@@ -11,6 +18,11 @@
   ];
   const DRAG_THRESHOLD = 5; // px before drag activates
 
+  /**
+   * Get per-site config from storage
+   * @param {string} host - hostname to lookup
+   * @returns {Promise<Object|null>}
+   */
   async function getSiteConfig(host) {
     const { siteConfigs = {} } = await browser.storage.local.get('siteConfigs');
     const normalized = normalizeHostname(host);
@@ -57,6 +69,10 @@
     await saveSiteConfig(hostname, config);
   }
 
+  /**
+   * Merge site config with global defaults
+   * @returns {Promise<{defaultSpeed: number, hidden: boolean, panelPosition: {x: number, y: number}}>}
+   */
   async function getEffectiveSettings() {
     const siteConfig = await getSiteConfig(hostname);
     const global = await browser.storage.local.get(['defaultSpeed', 'hideGlobal', 'panelPosition']);
@@ -81,7 +97,7 @@
     for (const video of videos) {
       // Check if video is visible and has dimensions
       const rect = video.getBoundingClientRect();
-      if (rect.width > 50 && rect.height > 50) {
+      if (rect.width > MIN_VIDEO_SIZE && rect.height > MIN_VIDEO_SIZE) {
         return true;
       }
     }
@@ -179,11 +195,16 @@
     defaultSpeed = speed;
     await setSiteConfig('defaultSpeed', speed);
     // Broadcast to other tabs via background
-    browser.runtime.sendMessage({ action: 'broadcastDefaultSpeed', speed, hostname }).catch(() => {});
+    browser.runtime.sendMessage({ action: 'broadcastDefaultSpeed', speed, hostname })
+      .catch((err) => console.warn("YT Speed [" + hostname + "]: broadcast failed", err));
   }
 
   // ============ Speed Control ============
 
+  /**
+   * Set playback speed for all videos on page
+   * @param {number} speed - target speed (will be clamped and rounded)
+   */
   function setSpeed(speed) {
     speed = roundSpeed(clampSpeed(speed));
     currentSpeed = speed;
@@ -203,7 +224,7 @@
   // Debounced version to prevent multiple calls during page load
   function applySpeedToAllVideosDebounced() {
     if (applySpeedTimer) clearTimeout(applySpeedTimer);
-    applySpeedTimer = setTimeout(applySpeedToAllVideos, 50);
+    applySpeedTimer = setTimeout(applySpeedToAllVideos, DEBOUNCE_SPEED_MS);
   }
 
   // ============ UI Updates ============
@@ -353,7 +374,7 @@
     updateDisabledState();
   }
 
-  function attachUIEventListeners(cnt) {
+  function attachUIEventListeners(el) {
     const toggle = document.getElementById("yt-speed-toggle");
     const panel = document.getElementById("yt-speed-panel");
     const closeBtn = document.querySelector(".yt-speed-close");
@@ -376,16 +397,16 @@
       if (uiVisible) {
         // Keep panel on screen after render
         requestAnimationFrame(() => {
-          const cntRect = cnt.getBoundingClientRect();
+          const elRect = el.getBoundingClientRect();
           const panelRect = panel.getBoundingClientRect();
           const totalWidth = panelRect.width;
-          const totalHeight = panelRect.bottom - cntRect.top;
-          let x = Math.min(cntRect.left, window.innerWidth - totalWidth - 8);
-          let y = Math.min(cntRect.top, window.innerHeight - totalHeight - 8);
-          x = Math.max(8, x);
-          y = Math.max(8, y);
-          cnt.style.left = x + "px";
-          cnt.style.top = y + "px";
+          const totalHeight = panelRect.bottom - elRect.top;
+          let x = Math.min(elRect.left, window.innerWidth - totalWidth - UI_MARGIN);
+          let y = Math.min(elRect.top, window.innerHeight - totalHeight - UI_MARGIN);
+          x = Math.max(UI_MARGIN, x);
+          y = Math.max(UI_MARGIN, y);
+          el.style.left = x + "px";
+          el.style.top = y + "px";
         });
       }
     });
@@ -420,7 +441,8 @@
     const settingsBtn = document.querySelector(".yt-speed-settings");
     settingsBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      browser.runtime.sendMessage({ action: 'openOptions' });
+      browser.runtime.sendMessage({ action: 'openOptions' })
+        .catch((err) => console.warn("YT Speed: openOptions failed", err));
     });
 
     // Preset buttons (event delegation)
@@ -453,10 +475,10 @@
 
     // Increment/decrement buttons
     document.getElementById("yt-speed-decrement").addEventListener("click", () => {
-      setSpeed(Math.max(SPEED_MIN, currentSpeed - 0.25));
+      setSpeed(Math.max(SPEED_MIN, currentSpeed - SPEED_STEP));
     });
     document.getElementById("yt-speed-increment").addEventListener("click", () => {
-      setSpeed(Math.min(SPEED_MAX, currentSpeed + 0.25));
+      setSpeed(Math.min(SPEED_MAX, currentSpeed + SPEED_STEP));
     });
 
     // Save for this site
@@ -470,7 +492,7 @@
         panel.classList.remove("visible");
         saveSiteBtn.textContent = "Save for Site";
         saveSiteBtn.classList.remove("saved");
-      }, 800);
+      }, FEEDBACK_DURATION_MS);
     });
 
     // Save for all sites (global default)
@@ -485,7 +507,7 @@
         panel.classList.remove("visible");
         saveGlobalBtn.textContent = "Save for All";
         saveGlobalBtn.classList.remove("saved");
-      }, 800);
+      }, FEEDBACK_DURATION_MS);
     });
 
     // Reset button
@@ -507,7 +529,7 @@
 
     // Close panel when clicking outside
     document.addEventListener("click", (e) => {
-      if (uiVisible && !cnt.contains(e.target)) {
+      if (uiVisible && !el.contains(e.target)) {
         uiVisible = false;
         panel.classList.remove("visible");
       }
@@ -531,8 +553,8 @@
       const panel = document.getElementById("yt-speed-panel");
       const panelVisible = panel && panel.classList.contains("visible");
       cachedDragDims = {
-        w: panelVisible ? panel.offsetWidth : 40,
-        h: panelVisible ? 50 + panel.offsetHeight : 40
+        w: panelVisible ? panel.offsetWidth : UI_TOGGLE_SIZE,
+        h: panelVisible ? UI_TOGGLE_SIZE + 10 + panel.offsetHeight : UI_TOGGLE_SIZE
       };
       e.preventDefault();
     });
@@ -547,7 +569,7 @@
           didDrag = true;
         }
       }
-      const { w, h } = cachedDragDims || { w: 40, h: 40 };
+      const { w, h } = cachedDragDims || { w: UI_TOGGLE_SIZE, h: UI_TOGGLE_SIZE };
       let x = e.clientX - dragOffset.x;
       let y = e.clientY - dragOffset.y;
       x = Math.max(0, Math.min(x, window.innerWidth - w));
@@ -576,8 +598,8 @@
       const panel = document.getElementById("yt-speed-panel");
       const panelVisible = panel && panel.classList.contains("visible");
       cachedDragDims = {
-        w: panelVisible ? panel.offsetWidth : 40,
-        h: panelVisible ? 50 + panel.offsetHeight : 40
+        w: panelVisible ? panel.offsetWidth : UI_TOGGLE_SIZE,
+        h: panelVisible ? UI_TOGGLE_SIZE + 10 + panel.offsetHeight : UI_TOGGLE_SIZE
       };
     }, { passive: true });
 
@@ -592,7 +614,7 @@
           didDrag = true;
         }
       }
-      const { w, h } = cachedDragDims || { w: 40, h: 40 };
+      const { w, h } = cachedDragDims || { w: UI_TOGGLE_SIZE, h: UI_TOGGLE_SIZE };
       let x = touch.clientX - dragOffset.x;
       let y = touch.clientY - dragOffset.y;
       x = Math.max(0, Math.min(x, window.innerWidth - w));
@@ -612,35 +634,35 @@
     window.addEventListener("resize", () => snapToScreen(container));
   }
 
-  function snapToScreen(cnt, save = true) {
-    if (!cnt) return;
-    const rect = cnt.getBoundingClientRect();
-    const width = cnt.offsetWidth || 40;
-    const height = cnt.offsetHeight || 40;
+  function snapToScreen(el, save = true) {
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const width = el.offsetWidth || UI_TOGGLE_SIZE;
+    const height = el.offsetHeight || UI_TOGGLE_SIZE;
     const safeX = Math.max(0, Math.min(rect.left, window.innerWidth - width));
     const safeY = Math.max(0, Math.min(rect.top, window.innerHeight - height));
     if (safeX !== rect.left || safeY !== rect.top) {
-      cnt.style.left = safeX + "px";
-      cnt.style.top = safeY + "px";
-      if (save) savePosition(cnt);
+      el.style.left = safeX + "px";
+      el.style.top = safeY + "px";
+      if (save) savePosition(el);
     }
   }
 
-  function savePosition(cnt) {
-    const rect = cnt.getBoundingClientRect();
+  function savePosition(el) {
+    const rect = el.getBoundingClientRect();
     setSiteConfig('panelPosition', { x: rect.left, y: rect.top })
       .catch((err) => console.warn("YT Speed [" + hostname + "]: savePosition failed", err));
   }
 
-  async function loadPosition(cnt) {
+  async function loadPosition(el) {
     try {
       const settings = await getEffectiveSettings();
       const { x, y } = settings.panelPosition;
       // Bounds check on load
-      const safeX = Math.max(0, Math.min(x, window.innerWidth - 50));
-      const safeY = Math.max(0, Math.min(y, window.innerHeight - 50));
-      cnt.style.left = safeX + "px";
-      cnt.style.top = safeY + "px";
+      const safeX = Math.max(0, Math.min(x, window.innerWidth - MIN_VIDEO_SIZE));
+      const safeY = Math.max(0, Math.min(y, window.innerHeight - MIN_VIDEO_SIZE));
+      el.style.left = safeX + "px";
+      el.style.top = safeY + "px";
     } catch (err) {
       console.warn("YT Speed [" + hostname + "]: loadPosition failed", err);
     }
@@ -706,14 +728,16 @@
 
   // ============ Video Observer ============
 
-  // Enforce speed with exponential backoff for YouTube's aggressive ratechange
+  /**
+   * Enforce speed with exponential backoff for YouTube's aggressive ratechange
+   * @param {HTMLVideoElement} video
+   * @param {number} attempt - current retry count
+   */
   function enforceSpeed(video, attempt = 0) {
-    const maxAttempts = 5;
-    const delays = [10, 25, 50, 100, 200];
-    if (attempt >= maxAttempts) return;
+    if (attempt >= ENFORCE_MAX_ATTEMPTS) return;
     if (video.playbackRate !== currentSpeed) {
       video.playbackRate = currentSpeed;
-      setTimeout(() => enforceSpeed(video, attempt + 1), delays[attempt]);
+      setTimeout(() => enforceSpeed(video, attempt + 1), ENFORCE_BACKOFF_DELAYS[attempt]);
     }
   }
 
@@ -741,7 +765,7 @@
           maybeShowUI();
         }
         if (hasPlayerControls && isYouTube) createPlayerControl();
-      }, 100);
+      }, DEBOUNCE_OBSERVER_MS);
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
@@ -850,7 +874,7 @@
 
   async function init() {
     if (!document.body) {
-      setTimeout(init, 100);
+      setTimeout(init, INIT_RETRY_MS);
       return;
     }
 
@@ -866,8 +890,7 @@
     };
 
     setup();
-    setTimeout(setup, 1000);
-    setTimeout(setup, 3000);
+    SETUP_RETRY_DELAYS.forEach(delay => setTimeout(setup, delay));
 
     // Cleanup on unload
     window.addEventListener('unload', cleanup);
