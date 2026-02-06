@@ -18,7 +18,10 @@
 /* Base reset - scoped to extension only */
 #yt-speed-control,
 #yt-speed-control * {
-  box-sizing: border-box;
+  box-sizing: border-box !important;
+  margin: 0;
+  padding: 0;
+  text-align: left;
 }
 
 /* Animation */
@@ -56,10 +59,11 @@
 
 /* Preset buttons grid */
 .yt-speed-presets {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-  margin-bottom: 16px;
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 6px !important;
+  margin-bottom: 16px !important;
+  width: 100% !important;
 }
 
 .yt-speed-preset {
@@ -98,8 +102,9 @@
 
 /* Slider */
 .yt-speed-slider {
-  margin-bottom: 16px;
-  padding: 0 4px;
+  margin-bottom: 16px !important;
+  padding: 0 4px !important;
+  width: 100% !important;
 }
 
 .yt-speed-slider input[type="range"] {
@@ -143,7 +148,8 @@
 
 /* Custom input */
 .yt-speed-custom {
-  margin-bottom: 16px;
+  margin-bottom: 16px !important;
+  width: 100% !important;
 }
 
 .yt-speed-custom label {
@@ -157,9 +163,10 @@
 
 /* Number input with +/- buttons */
 .yt-speed-number-input {
-  display: flex;
-  align-items: center;
-  overflow: hidden;
+  display: flex !important;
+  align-items: center !important;
+  overflow: hidden !important;
+  width: 100% !important;
 }
 
 .yt-speed-number-input:focus-within {
@@ -215,21 +222,22 @@
 
 /* Action button */
 .yt-speed-action {
-  width: 100%;
-  padding: 14px;
-  background: var(--yt-bg-secondary);
-  color: var(--yt-text-primary);
-  border: 1px solid var(--yt-border);
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 600;
+  width: 100% !important;
+  padding: 14px !important;
+  background: var(--yt-bg-secondary) !important;
+  color: var(--yt-text-primary) !important;
+  border: 1px solid var(--yt-border) !important;
+  border-radius: 12px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
   font-family:
     "Geist",
     -apple-system,
     BlinkMacSystemFont,
-    sans-serif;
-  cursor: pointer;
+    sans-serif !important;
+  cursor: pointer !important;
   transition: all 0.15s ease;
+  text-align: center !important;
 }
 
 .yt-speed-action:hover {
@@ -259,9 +267,10 @@
 
 /* Info text */
 .yt-speed-info {
-  font-size: 11px;
-  color: var(--yt-text-muted);
-  text-align: center;
+  font-size: 11px !important;
+  color: var(--yt-text-muted) !important;
+  text-align: center !important;
+  width: 100% !important;
 }
 
 /* Header */

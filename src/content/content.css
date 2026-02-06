@@ -167,26 +167,29 @@
 
 /* Display container */
 .yt-speed-display-container {
-  text-align: center;
-  margin-bottom: 20px;
+  text-align: center !important;
+  margin-bottom: 20px !important;
+  width: 100% !important;
 }
 
 /* Action buttons section */
 .yt-speed-actions {
-  padding-top: 12px;
-  border-top: 1px solid var(--yt-border);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  padding-top: 12px !important;
+  border-top: 1px solid var(--yt-border) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  width: 100% !important;
 }
 
 .yt-speed-save-row {
-  display: flex;
-  gap: 8px;
+  display: flex !important;
+  gap: 8px !important;
+  width: 100% !important;
 }
 
 .yt-speed-save-row .yt-speed-action {
-  flex: 1;
+  flex: 1 !important;
 }
 
 /* Info text */
