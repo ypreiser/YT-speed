@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.4
+
+- **Performance**: Cache DOM refs, batch storage reads, passive event listeners
+- **Performance**: Track videos in Set instead of repeated DOM queries
+- **Accessibility**: ARIA labels, roles, keyboard navigation (Escape closes panel)
+- **Memory**: Fix leaks by cleaning up all document/window listeners on unload
+- **Code quality**: Extract constants to utils.js, add JSDoc, improve naming
+
 ## 1.1.3
 
 - Add disable feature (per-site and global) - stops speed control, uses native player

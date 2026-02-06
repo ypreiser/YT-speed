@@ -14,6 +14,7 @@ A lightweight Firefox extension for controlling video playback speed on any webs
 - **Disable Options** - Disable speed control per-site or globally (use native player)
 - **Export/Import** - Backup and restore all settings
 - **Mobile-Friendly** - Works on Firefox for Android
+- **Accessible** - ARIA labels, keyboard navigation (Escape closes panel)
 
 ## Installation
 
@@ -67,19 +68,19 @@ On YouTube, a speed button appears in the player controls for quick access.
 
 ```
 YT-speed/
-├── manifest.json      # Extension manifest
-├── content.js         # Floating panel + speed control
-├── content.css        # Panel styles
-├── background.js      # Message routing
-├── popup.html/js      # Toolbar popup
-├── options.html/js    # Settings page
-├── shared.css         # Shared styles
-├── icons/             # Extension icons
-├── tests/             # Test suite
+├── manifest.json          # Extension manifest
+├── src/
+│   ├── content/           # Content script (floating panel + speed control)
+│   ├── background/        # Message routing between tabs
+│   ├── popup/             # Toolbar popup UI
+│   ├── options/           # Settings page
+│   └── shared/            # Shared utils and styles
+├── icons/                 # Extension icons
+├── tests/                 # Test suite
 │   ├── extension.test.js  # E2E tests (Selenium)
 │   ├── unit.test.js       # Unit tests
 │   └── helpers.js         # Test utilities
-└── package.json       # Test dependencies
+└── package.json           # Dev dependencies
 ```
 
 ## Testing
