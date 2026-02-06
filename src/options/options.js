@@ -3,7 +3,7 @@
   'use strict';
 
   // Import from shared utils
-  const { SPEED_MIN, SPEED_MAX, clampSpeed, validateSpeed, validateImportData } = window.YTSpeedUtils;
+  const { SPEED_MIN, SPEED_MAX, SPEED_STEP, clampSpeed, validateSpeed, validateImportData } = window.YTSpeedUtils;
 
   function createSvgIcon(...paths) {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -111,7 +111,7 @@
       speedInput.className = "editor-speed";
       speedInput.min = SPEED_MIN;
       speedInput.max = SPEED_MAX;
-      speedInput.step = "0.25";
+      speedInput.step = "0.05";
       speedInput.value = config.defaultSpeed || 1;
 
       const incrementBtn = document.createElement("button");
@@ -120,10 +120,10 @@
       incrementBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg>';
 
       decrementBtn.addEventListener("click", () => {
-        speedInput.value = clampSpeed(parseFloat(speedInput.value) - 0.25);
+        speedInput.value = clampSpeed(parseFloat(speedInput.value) - SPEED_STEP);
       });
       incrementBtn.addEventListener("click", () => {
-        speedInput.value = clampSpeed(parseFloat(speedInput.value) + 0.25);
+        speedInput.value = clampSpeed(parseFloat(speedInput.value) + SPEED_STEP);
       });
 
       speedWrapper.appendChild(decrementBtn);
@@ -254,14 +254,14 @@
   // Increment/decrement buttons for global speed
   document.getElementById('global-speed-decrement').addEventListener('click', async () => {
     const current = parseFloat(globalSpeedInput.value) || 1;
-    const newSpeed = clampSpeed(current - 0.25);
+    const newSpeed = clampSpeed(current - SPEED_STEP);
     globalSpeedInput.value = newSpeed;
     await browser.storage.local.set({ defaultSpeed: newSpeed });
   });
 
   document.getElementById('global-speed-increment').addEventListener('click', async () => {
     const current = parseFloat(globalSpeedInput.value) || 1;
-    const newSpeed = clampSpeed(current + 0.25);
+    const newSpeed = clampSpeed(current + SPEED_STEP);
     globalSpeedInput.value = newSpeed;
     await browser.storage.local.set({ defaultSpeed: newSpeed });
   });

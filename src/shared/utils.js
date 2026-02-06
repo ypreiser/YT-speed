@@ -8,7 +8,7 @@
   const SPEED_MIN = 0.25;
   const SPEED_MAX = 16;
   const DEFAULT_SPEED = 1;
-  const SPEED_STEP = 0.25;
+  const SPEED_STEP = 0.05;
   const VALID_CONFIG_KEYS = ['defaultSpeed', 'hideGlobal', 'disableGlobal', 'panelPosition', 'siteConfigs'];
 
   // UI Constants
