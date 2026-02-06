@@ -3,7 +3,7 @@
   'use strict';
 
   // Import from shared utils
-  const { SPEED_MIN, SPEED_MAX, DEFAULT_SPEED, clampSpeed, roundSpeed } = window.YTSpeedUtils;
+  const { SPEED_MIN, SPEED_MAX, DEFAULT_SPEED, SPEED_STEP, clampSpeed, roundSpeed } = window.YTSpeedUtils;
 
   let currentSpeed = DEFAULT_SPEED;
   let defaultSpeed = DEFAULT_SPEED;
@@ -163,12 +163,12 @@
 
   // Increment/decrement buttons
   document.getElementById('speed-decrement').addEventListener('click', () => {
-    const newSpeed = Math.max(SPEED_MIN, currentSpeed - 0.25);
+    const newSpeed = Math.max(SPEED_MIN, currentSpeed - SPEED_STEP);
     setSpeed(newSpeed);
   });
 
   document.getElementById('speed-increment').addEventListener('click', () => {
-    const newSpeed = Math.min(SPEED_MAX, currentSpeed + 0.25);
+    const newSpeed = Math.min(SPEED_MAX, currentSpeed + SPEED_STEP);
     setSpeed(newSpeed);
   });
 

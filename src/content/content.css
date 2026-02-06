@@ -89,17 +89,19 @@
 }
 
 .yt-speed-hide-toggle {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  background: transparent;
-  border: 1px solid var(--yt-border);
-  color: var(--yt-text-secondary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  all: unset !important;
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  border: 1px solid var(--yt-border) !important;
+  color: var(--yt-text-secondary) !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   transition: all 0.15s ease;
+  box-sizing: border-box !important;
 }
 
 .yt-speed-hide-toggle:hover {
@@ -128,16 +130,17 @@
 }
 
 .yt-speed-hide-menu button {
-  display: block;
-  width: 100%;
-  padding: 8px 12px;
-  background: transparent;
-  border: none;
-  color: var(--yt-text-primary);
-  font-size: 12px;
-  text-align: left;
-  cursor: pointer;
+  all: unset !important;
+  display: block !important;
+  width: 100% !important;
+  padding: 8px 12px !important;
+  background: transparent !important;
+  color: var(--yt-text-primary) !important;
+  font-size: 12px !important;
+  text-align: left !important;
+  cursor: pointer !important;
   transition: background 0.1s ease;
+  box-sizing: border-box !important;
 }
 
 .yt-speed-hide-menu button:hover {
@@ -146,17 +149,19 @@
 
 /* Settings button */
 .yt-speed-settings {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  background: transparent;
-  border: 1px solid var(--yt-border);
-  color: var(--yt-text-secondary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  all: unset !important;
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  border: 1px solid var(--yt-border) !important;
+  color: var(--yt-text-secondary) !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   transition: all 0.15s ease;
+  box-sizing: border-box !important;
 }
 
 .yt-speed-settings:hover {
@@ -167,26 +172,29 @@
 
 /* Display container */
 .yt-speed-display-container {
-  text-align: center;
-  margin-bottom: 20px;
+  text-align: center !important;
+  margin-bottom: 20px !important;
+  width: 100% !important;
 }
 
 /* Action buttons section */
 .yt-speed-actions {
-  padding-top: 12px;
-  border-top: 1px solid var(--yt-border);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  padding-top: 12px !important;
+  border-top: 1px solid var(--yt-border) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  width: 100% !important;
 }
 
 .yt-speed-save-row {
-  display: flex;
-  gap: 8px;
+  display: flex !important;
+  gap: 8px !important;
+  width: 100% !important;
 }
 
 .yt-speed-save-row .yt-speed-action {
-  flex: 1;
+  flex: 1 !important;
 }
 
 /* Info text */

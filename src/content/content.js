@@ -3,7 +3,14 @@
   "use strict";
 
   // Import from shared utils
-  const { SPEED_MIN, SPEED_MAX, DEFAULT_SPEED, clampSpeed, roundSpeed, normalizeHostname } = window.YTSpeedUtils;
+  const {
+    SPEED_MIN, SPEED_MAX, DEFAULT_SPEED, SPEED_STEP,
+    UI_TOGGLE_SIZE, UI_MARGIN, MIN_VIDEO_SIZE,
+    DEBOUNCE_SPEED_MS, DEBOUNCE_OBSERVER_MS, FEEDBACK_DURATION_MS,
+    INIT_RETRY_MS, SETUP_RETRY_DELAYS,
+    ENFORCE_BACKOFF_DELAYS, ENFORCE_MAX_ATTEMPTS,
+    clampSpeed, roundSpeed, normalizeHostname
+  } = window.YTSpeedUtils;
 
   // Local constants
   const SPEED_PRESETS = [
@@ -11,6 +18,11 @@
   ];
   const DRAG_THRESHOLD = 5; // px before drag activates
 
+  /**
+   * Get per-site config from storage
+   * @param {string} host - hostname to lookup
+   * @returns {Promise<Object|null>}
+   */
   async function getSiteConfig(host) {
     const { siteConfigs = {} } = await browser.storage.local.get('siteConfigs');
     const normalized = normalizeHostname(host);
@@ -48,6 +60,16 @@
   let observerDebounceTimer = null; // MutationObserver debounce
   let playHandler = null; // stored for cleanup
   let ratechangeHandler = null; // stored for cleanup
+  let cachedUIElements = null; // cached DOM refs for updateSpeedDisplay
+  let trackedVideos = new Set(); // cached video elements
+  // Document-level listener refs for cleanup
+  let docClickHandler1 = null;
+  let docClickHandler2 = null;
+  let docMousemoveHandler = null;
+  let docMouseupHandler = null;
+  let docTouchmoveHandler = null;
+  let docTouchendHandler = null;
+  let winResizeHandler = null;
 
   // ============ Site Config ============
 
@@ -57,6 +79,10 @@
     await saveSiteConfig(hostname, config);
   }
 
+  /**
+   * Merge site config with global defaults
+   * @returns {Promise<{defaultSpeed: number, hidden: boolean, panelPosition: {x: number, y: number}}>}
+   */
   async function getEffectiveSettings() {
     const siteConfig = await getSiteConfig(hostname);
     const global = await browser.storage.local.get(['defaultSpeed', 'hideGlobal', 'panelPosition']);
@@ -76,12 +102,25 @@
     return hidden;
   }
 
+  function trackVideo(video) {
+    if (video && video.tagName === 'VIDEO' && !trackedVideos.has(video)) {
+      trackedVideos.add(video);
+    }
+  }
+
+  function scanForVideos() {
+    document.querySelectorAll('video').forEach(trackVideo);
+  }
+
   function hasVideo() {
-    const videos = document.querySelectorAll('video');
-    for (const video of videos) {
-      // Check if video is visible and has dimensions
+    // Clean up removed videos and check for visible ones
+    for (const video of trackedVideos) {
+      if (!document.contains(video)) {
+        trackedVideos.delete(video);
+        continue;
+      }
       const rect = video.getBoundingClientRect();
-      if (rect.width > 50 && rect.height > 50) {
+      if (rect.width > MIN_VIDEO_SIZE && rect.height > MIN_VIDEO_SIZE) {
         return true;
       }
     }
@@ -89,51 +128,71 @@
   }
 
   async function maybeShowUI() {
-    const videoExists = hasVideo();
-    const hidden = await shouldHide();
+    try {
+      const videoExists = hasVideo();
+      const hidden = await shouldHide();
 
-    if (videoExists && !uiCreated && !hidden) {
-      createUI();
-      uiCreated = true;
-    } else if (container) {
-      container.classList.toggle('yt-speed-hidden', !videoExists || hidden);
+      if (videoExists && !uiCreated && !hidden) {
+        createUI();
+        uiCreated = true;
+      } else if (container) {
+        container.classList.toggle('yt-speed-hidden', !videoExists || hidden);
+      }
+    } catch (err) {
+      console.warn("YT Speed [" + hostname + "]: maybeShowUI failed", err);
     }
   }
 
   async function hideButton(scope) {
-    if (scope === 'tab') {
-      hiddenInThisTab = true;
-    } else if (scope === 'site') {
-      await setSiteConfig('hidden', true);
-    } else if (scope === 'global') {
-      await browser.storage.local.set({ hideGlobal: true });
+    try {
+      if (scope === 'tab') {
+        hiddenInThisTab = true;
+      } else if (scope === 'site') {
+        await setSiteConfig('hidden', true);
+      } else if (scope === 'global') {
+        await browser.storage.local.set({ hideGlobal: true });
+      }
+      maybeShowUI();
+    } catch (err) {
+      console.warn("YT Speed [" + hostname + "]: hideButton failed", err);
     }
-    maybeShowUI();
   }
 
   async function showButton(scope) {
-    if (scope === 'tab') {
-      hiddenInThisTab = false;
-    } else if (scope === 'site') {
-      await setSiteConfig('hidden', false);
-    } else if (scope === 'global') {
-      await browser.storage.local.set({ hideGlobal: false });
+    try {
+      if (scope === 'tab') {
+        hiddenInThisTab = false;
+      } else if (scope === 'site') {
+        await setSiteConfig('hidden', false);
+      } else if (scope === 'global') {
+        await browser.storage.local.set({ hideGlobal: false });
+      }
+      maybeShowUI();
+    } catch (err) {
+      console.warn("YT Speed [" + hostname + "]: showButton failed", err);
     }
-    maybeShowUI();
   }
 
   async function disableSite() {
-    siteDisabled = true;
-    await setSiteConfig('disabled', true);
-    resetAllVideosToNative();
-    updateDisabledState();
+    try {
+      siteDisabled = true;
+      await setSiteConfig('disabled', true);
+      resetAllVideosToNative();
+      updateDisabledState();
+    } catch (err) {
+      console.warn("YT Speed [" + hostname + "]: disableSite failed", err);
+    }
   }
 
   async function enableSite() {
-    siteDisabled = false;
-    await setSiteConfig('disabled', false);
-    applySpeedToAllVideos();
-    updateDisabledState();
+    try {
+      siteDisabled = false;
+      await setSiteConfig('disabled', false);
+      applySpeedToAllVideos();
+      updateDisabledState();
+    } catch (err) {
+      console.warn("YT Speed [" + hostname + "]: enableSite failed", err);
+    }
   }
 
   function updateDisabledState() {
@@ -153,20 +212,27 @@
 
   // Reset all videos to native 1x speed (for when disabled)
   function resetAllVideosToNative() {
-    document.querySelectorAll("video").forEach((video) => {
-      video.playbackRate = 1.0;
-    });
+    for (const video of trackedVideos) {
+      if (document.contains(video)) {
+        video.playbackRate = 1.0;
+      }
+    }
   }
 
   // ============ Storage ============
 
   async function loadSettings() {
     try {
-      const settings = await getEffectiveSettings();
-      const siteConfig = await getSiteConfig(hostname);
-      const global = await browser.storage.local.get(['disableGlobal']);
-      siteDisabled = global.disableGlobal || siteConfig?.disabled || false;
-      defaultSpeed = settings.defaultSpeed;
+      // Batch storage read: fetch all needed keys in one call
+      const storage = await browser.storage.local.get([
+        'siteConfigs', 'defaultSpeed', 'hideGlobal', 'disableGlobal', 'panelPosition'
+      ]);
+      const siteConfigs = storage.siteConfigs || {};
+      const normalized = normalizeHostname(hostname);
+      const siteConfig = siteConfigs[normalized] || siteConfigs[hostname] || null;
+
+      siteDisabled = storage.disableGlobal || siteConfig?.disabled || false;
+      defaultSpeed = siteConfig?.defaultSpeed ?? storage.defaultSpeed ?? 1.0;
       currentSpeed = defaultSpeed;
       applySpeedToAllVideos();
       updateSpeedDisplay();
@@ -176,14 +242,23 @@
   }
 
   async function saveDefaultSpeed(speed) {
-    defaultSpeed = speed;
-    await setSiteConfig('defaultSpeed', speed);
-    // Broadcast to other tabs via background
-    browser.runtime.sendMessage({ action: 'broadcastDefaultSpeed', speed, hostname }).catch(() => {});
+    try {
+      defaultSpeed = speed;
+      await setSiteConfig('defaultSpeed', speed);
+      // Broadcast to other tabs via background
+      browser.runtime.sendMessage({ action: 'broadcastDefaultSpeed', speed, hostname })
+        .catch((err) => console.warn("YT Speed [" + hostname + "]: broadcast failed", err));
+    } catch (err) {
+      console.warn("YT Speed [" + hostname + "]: saveDefaultSpeed failed", err);
+    }
   }
 
   // ============ Speed Control ============
 
+  /**
+   * Set playback speed for all videos on page
+   * @param {number} speed - target speed (will be clamped and rounded)
+   */
   function setSpeed(speed) {
     speed = roundSpeed(clampSpeed(speed));
     currentSpeed = speed;
@@ -193,100 +268,113 @@
 
   function applySpeedToAllVideos() {
     if (siteDisabled) return;
-    document.querySelectorAll("video").forEach((video) => {
+    // Use tracked videos, clean up stale refs
+    for (const video of trackedVideos) {
+      if (!document.contains(video)) {
+        trackedVideos.delete(video);
+        continue;
+      }
       if (video.playbackRate !== currentSpeed) {
         video.playbackRate = currentSpeed;
       }
-    });
+    }
   }
 
   // Debounced version to prevent multiple calls during page load
   function applySpeedToAllVideosDebounced() {
     if (applySpeedTimer) clearTimeout(applySpeedTimer);
-    applySpeedTimer = setTimeout(applySpeedToAllVideos, 50);
+    applySpeedTimer = setTimeout(applySpeedToAllVideos, DEBOUNCE_SPEED_MS);
   }
 
   // ============ UI Updates ============
 
-  function updateSpeedDisplay() {
-    const elements = {
+  function cacheUIElements() {
+    cachedUIElements = {
       toggle: document.getElementById("yt-speed-toggle"),
       display: document.getElementById("yt-speed-display"),
       customInput: document.getElementById("yt-speed-custom"),
       rangeInput: document.getElementById("yt-speed-range"),
       infoText: document.querySelector(".yt-speed-info"),
       playerText: document.querySelector(".yt-speed-player-text"),
+      presets: document.querySelectorAll(".yt-speed-preset"),
     };
+  }
 
-    if (elements.toggle) elements.toggle.textContent = `${currentSpeed}x`;
-    if (elements.display) elements.display.textContent = `${currentSpeed}x`;
-    if (elements.customInput) elements.customInput.value = currentSpeed;
-    if (elements.rangeInput) elements.rangeInput.value = currentSpeed;
-    if (elements.infoText)
-      elements.infoText.textContent = `Default: ${defaultSpeed}x (this site)`;
-    if (elements.playerText)
-      elements.playerText.textContent = `${currentSpeed}x`;
+  function updateSpeedDisplay() {
+    const el = cachedUIElements;
+    if (!el) return;
 
-    // Update preset buttons
-    document.querySelectorAll(".yt-speed-preset").forEach((btn) => {
-      btn.classList.toggle(
-        "active",
-        parseFloat(btn.dataset.speed) === currentSpeed,
-      );
-    });
+    if (el.toggle) el.toggle.textContent = `${currentSpeed}x`;
+    if (el.display) el.display.textContent = `${currentSpeed}x`;
+    if (el.customInput) el.customInput.value = currentSpeed;
+    if (el.rangeInput) el.rangeInput.value = currentSpeed;
+    if (el.infoText)
+      el.infoText.textContent = `Default: ${defaultSpeed}x (this site)`;
+    if (el.playerText)
+      el.playerText.textContent = `${currentSpeed}x`;
+
+    // Update preset buttons (cached)
+    if (el.presets) {
+      el.presets.forEach((btn) => {
+        btn.classList.toggle(
+          "active",
+          parseFloat(btn.dataset.speed) === currentSpeed,
+        );
+      });
+    }
   }
 
   // ============ Floating UI ============
 
   function buildUITemplate() {
     return `
-      <button id="yt-speed-toggle"></button>
-      <div id="yt-speed-panel">
+      <button id="yt-speed-toggle" aria-label="Video playback speed control" aria-haspopup="true" aria-expanded="false"></button>
+      <div id="yt-speed-panel" role="dialog" aria-label="Playback speed settings">
         <div class="yt-speed-header">
-          <span>PLAYBACK SPEED</span>
+          <span id="yt-speed-title">PLAYBACK SPEED</span>
           <div class="yt-speed-header-actions">
             <div class="yt-speed-hide-dropdown">
-              <button class="yt-speed-hide-toggle" title="Hide button">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <button class="yt-speed-hide-toggle" title="Hide button" aria-label="Hide speed control" aria-haspopup="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                   <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
                   <line x1="1" y1="1" x2="23" y2="23"/>
                 </svg>
               </button>
-              <div class="yt-speed-hide-menu">
-                <button data-scope="tab">This Tab</button>
-                <button data-scope="site">This Site</button>
-                <button data-scope="global">All Sites</button>
+              <div class="yt-speed-hide-menu" role="menu" aria-label="Hide options">
+                <button data-scope="tab" role="menuitem">This Tab</button>
+                <button data-scope="site" role="menuitem">This Site</button>
+                <button data-scope="global" role="menuitem">All Sites</button>
               </div>
             </div>
-            <button class="yt-speed-settings" title="Settings">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <button class="yt-speed-settings" title="Settings" aria-label="Open settings">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/>
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.08a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.08a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>
               </svg>
             </button>
-            <button class="yt-speed-close">×</button>
+            <button class="yt-speed-close" aria-label="Close panel">×</button>
           </div>
         </div>
         <div class="yt-speed-display-container">
-          <div class="yt-speed-current" id="yt-speed-display"></div>
+          <div class="yt-speed-current" id="yt-speed-display" aria-live="polite"></div>
           <div class="yt-speed-label">CURRENT SPEED</div>
         </div>
         <div class="yt-speed-slider">
-          <input type="range" id="yt-speed-range" step="0.05">
+          <input type="range" id="yt-speed-range" step="0.05" aria-label="Speed slider">
         </div>
         <button class="yt-speed-action yt-speed-reset" id="yt-speed-reset">Reset to 1x</button>
-        <div class="yt-speed-presets"></div>
+        <div class="yt-speed-presets" role="group" aria-label="Speed presets"></div>
         <div class="yt-speed-custom">
-          <label></label>
+          <label id="yt-speed-custom-label"></label>
           <div class="yt-speed-number-input">
-            <button type="button" class="yt-speed-number-btn" id="yt-speed-decrement">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <button type="button" class="yt-speed-number-btn" id="yt-speed-decrement" aria-label="Decrease speed">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path d="M5 12h14"/>
               </svg>
             </button>
-            <input type="number" id="yt-speed-custom" step="0.05">
-            <button type="button" class="yt-speed-number-btn" id="yt-speed-increment">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <input type="number" id="yt-speed-custom" step="0.05" aria-labelledby="yt-speed-custom-label">
+            <button type="button" class="yt-speed-number-btn" id="yt-speed-increment" aria-label="Increase speed">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path d="M5 12h14M12 5v14"/>
               </svg>
             </button>
@@ -299,7 +387,7 @@
           </div>
           <button class="yt-speed-action yt-speed-disable" id="yt-speed-disable-btn">Disable</button>
         </div>
-        <div class="yt-speed-info"></div>
+        <div class="yt-speed-info" aria-live="polite"></div>
       </div>
     `;
   }
@@ -330,7 +418,7 @@
     customEl.min = SPEED_MIN;
     customEl.max = SPEED_MAX;
     customEl.value = currentSpeed;
-    container.querySelector(".yt-speed-custom label").textContent =
+    container.querySelector("#yt-speed-custom-label").textContent =
       "CUSTOM SPEED (" + SPEED_MIN + "x – " + SPEED_MAX + "x)";
     container.querySelector(".yt-speed-info").textContent =
       "Current Default Speed: " + defaultSpeed + "x (this site)";
@@ -347,13 +435,14 @@
     });
 
     document.body.appendChild(container);
+    cacheUIElements();
     attachUIEventListeners(container);
     loadPosition(container);
     attachDragListeners(container);
     updateDisabledState();
   }
 
-  function attachUIEventListeners(cnt) {
+  function attachUIEventListeners(el) {
     const toggle = document.getElementById("yt-speed-toggle");
     const panel = document.getElementById("yt-speed-panel");
     const closeBtn = document.querySelector(".yt-speed-close");
@@ -373,20 +462,33 @@
       }
       uiVisible = !uiVisible;
       panel.classList.toggle("visible", uiVisible);
+      toggle.setAttribute("aria-expanded", uiVisible);
       if (uiVisible) {
         // Keep panel on screen after render
         requestAnimationFrame(() => {
-          const cntRect = cnt.getBoundingClientRect();
+          const elRect = el.getBoundingClientRect();
           const panelRect = panel.getBoundingClientRect();
           const totalWidth = panelRect.width;
-          const totalHeight = panelRect.bottom - cntRect.top;
-          let x = Math.min(cntRect.left, window.innerWidth - totalWidth - 8);
-          let y = Math.min(cntRect.top, window.innerHeight - totalHeight - 8);
-          x = Math.max(8, x);
-          y = Math.max(8, y);
-          cnt.style.left = x + "px";
-          cnt.style.top = y + "px";
+          const totalHeight = panelRect.bottom - elRect.top;
+          let x = Math.min(elRect.left, window.innerWidth - totalWidth - UI_MARGIN);
+          let y = Math.min(elRect.top, window.innerHeight - totalHeight - UI_MARGIN);
+          x = Math.max(UI_MARGIN, x);
+          y = Math.max(UI_MARGIN, y);
+          el.style.left = x + "px";
+          el.style.top = y + "px";
+          // Focus first interactive element
+          closeBtn.focus();
         });
+      }
+    });
+
+    // Keyboard navigation
+    panel.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        uiVisible = false;
+        panel.classList.remove("visible");
+        toggle.setAttribute("aria-expanded", "false");
+        toggle.focus();
       }
     });
 
@@ -394,6 +496,7 @@
     closeBtn.addEventListener("click", () => {
       uiVisible = false;
       panel.classList.remove("visible");
+      toggle.setAttribute("aria-expanded", "false");
     });
 
     // Hide dropdown toggle
@@ -412,15 +515,17 @@
     });
 
     // Close hide menu when clicking elsewhere
-    document.addEventListener("click", () => {
+    docClickHandler1 = () => {
       hideMenu.classList.remove("visible");
-    });
+    };
+    document.addEventListener("click", docClickHandler1, { passive: true });
 
     // Settings button - send message to background to open options
     const settingsBtn = document.querySelector(".yt-speed-settings");
     settingsBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      browser.runtime.sendMessage({ action: 'openOptions' });
+      browser.runtime.sendMessage({ action: 'openOptions' })
+        .catch((err) => console.warn("YT Speed: openOptions failed", err));
     });
 
     // Preset buttons (event delegation)
@@ -453,10 +558,10 @@
 
     // Increment/decrement buttons
     document.getElementById("yt-speed-decrement").addEventListener("click", () => {
-      setSpeed(Math.max(SPEED_MIN, currentSpeed - 0.25));
+      setSpeed(Math.max(SPEED_MIN, currentSpeed - SPEED_STEP));
     });
     document.getElementById("yt-speed-increment").addEventListener("click", () => {
-      setSpeed(Math.min(SPEED_MAX, currentSpeed + 0.25));
+      setSpeed(Math.min(SPEED_MAX, currentSpeed + SPEED_STEP));
     });
 
     // Save for this site
@@ -470,7 +575,7 @@
         panel.classList.remove("visible");
         saveSiteBtn.textContent = "Save for Site";
         saveSiteBtn.classList.remove("saved");
-      }, 800);
+      }, FEEDBACK_DURATION_MS);
     });
 
     // Save for all sites (global default)
@@ -485,7 +590,7 @@
         panel.classList.remove("visible");
         saveGlobalBtn.textContent = "Save for All";
         saveGlobalBtn.classList.remove("saved");
-      }, 800);
+      }, FEEDBACK_DURATION_MS);
     });
 
     // Reset button
@@ -506,12 +611,14 @@
     });
 
     // Close panel when clicking outside
-    document.addEventListener("click", (e) => {
-      if (uiVisible && !cnt.contains(e.target)) {
+    docClickHandler2 = (e) => {
+      if (uiVisible && !el.contains(e.target)) {
         uiVisible = false;
         panel.classList.remove("visible");
+        toggle.setAttribute("aria-expanded", "false");
       }
-    });
+    };
+    document.addEventListener("click", docClickHandler2, { passive: true });
   }
 
   // ============ Drag & Position ============
@@ -531,13 +638,13 @@
       const panel = document.getElementById("yt-speed-panel");
       const panelVisible = panel && panel.classList.contains("visible");
       cachedDragDims = {
-        w: panelVisible ? panel.offsetWidth : 40,
-        h: panelVisible ? 50 + panel.offsetHeight : 40
+        w: panelVisible ? panel.offsetWidth : UI_TOGGLE_SIZE,
+        h: panelVisible ? UI_TOGGLE_SIZE + 10 + panel.offsetHeight : UI_TOGGLE_SIZE
       };
       e.preventDefault();
     });
 
-    document.addEventListener("mousemove", (e) => {
+    docMousemoveHandler = (e) => {
       if (!isDragging) return;
       // Set didDrag only after threshold exceeded (for tap detection)
       if (!didDrag) {
@@ -547,22 +654,24 @@
           didDrag = true;
         }
       }
-      const { w, h } = cachedDragDims || { w: 40, h: 40 };
+      const { w, h } = cachedDragDims || { w: UI_TOGGLE_SIZE, h: UI_TOGGLE_SIZE };
       let x = e.clientX - dragOffset.x;
       let y = e.clientY - dragOffset.y;
       x = Math.max(0, Math.min(x, window.innerWidth - w));
       y = Math.max(0, Math.min(y, window.innerHeight - h));
       container.style.left = x + "px";
       container.style.top = y + "px";
-    });
+    };
+    document.addEventListener("mousemove", docMousemoveHandler, { passive: true });
 
-    document.addEventListener("mouseup", () => {
+    docMouseupHandler = () => {
       if (isDragging) {
         isDragging = false;
         cachedDragDims = null;
         if (didDrag) savePosition(container);
       }
-    });
+    };
+    document.addEventListener("mouseup", docMouseupHandler, { passive: true });
 
     // Touch events
     toggle.addEventListener("touchstart", (e) => {
@@ -576,12 +685,12 @@
       const panel = document.getElementById("yt-speed-panel");
       const panelVisible = panel && panel.classList.contains("visible");
       cachedDragDims = {
-        w: panelVisible ? panel.offsetWidth : 40,
-        h: panelVisible ? 50 + panel.offsetHeight : 40
+        w: panelVisible ? panel.offsetWidth : UI_TOGGLE_SIZE,
+        h: panelVisible ? UI_TOGGLE_SIZE + 10 + panel.offsetHeight : UI_TOGGLE_SIZE
       };
     }, { passive: true });
 
-    document.addEventListener("touchmove", (e) => {
+    docTouchmoveHandler = (e) => {
       if (!isDragging) return;
       const touch = e.touches[0];
       // Set didDrag only after threshold exceeded (for tap detection)
@@ -592,55 +701,58 @@
           didDrag = true;
         }
       }
-      const { w, h } = cachedDragDims || { w: 40, h: 40 };
+      const { w, h } = cachedDragDims || { w: UI_TOGGLE_SIZE, h: UI_TOGGLE_SIZE };
       let x = touch.clientX - dragOffset.x;
       let y = touch.clientY - dragOffset.y;
       x = Math.max(0, Math.min(x, window.innerWidth - w));
       y = Math.max(0, Math.min(y, window.innerHeight - h));
       container.style.left = x + "px";
       container.style.top = y + "px";
-    }, { passive: true });
+    };
+    document.addEventListener("touchmove", docTouchmoveHandler, { passive: true });
 
-    document.addEventListener("touchend", () => {
+    docTouchendHandler = () => {
       if (isDragging) {
         isDragging = false;
         cachedDragDims = null;
         if (didDrag) savePosition(container);
       }
-    });
+    };
+    document.addEventListener("touchend", docTouchendHandler, { passive: true });
 
-    window.addEventListener("resize", () => snapToScreen(container));
+    winResizeHandler = () => snapToScreen(container);
+    window.addEventListener("resize", winResizeHandler, { passive: true });
   }
 
-  function snapToScreen(cnt, save = true) {
-    if (!cnt) return;
-    const rect = cnt.getBoundingClientRect();
-    const width = cnt.offsetWidth || 40;
-    const height = cnt.offsetHeight || 40;
+  function snapToScreen(el, save = true) {
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const width = el.offsetWidth || UI_TOGGLE_SIZE;
+    const height = el.offsetHeight || UI_TOGGLE_SIZE;
     const safeX = Math.max(0, Math.min(rect.left, window.innerWidth - width));
     const safeY = Math.max(0, Math.min(rect.top, window.innerHeight - height));
     if (safeX !== rect.left || safeY !== rect.top) {
-      cnt.style.left = safeX + "px";
-      cnt.style.top = safeY + "px";
-      if (save) savePosition(cnt);
+      el.style.left = safeX + "px";
+      el.style.top = safeY + "px";
+      if (save) savePosition(el);
     }
   }
 
-  function savePosition(cnt) {
-    const rect = cnt.getBoundingClientRect();
+  function savePosition(el) {
+    const rect = el.getBoundingClientRect();
     setSiteConfig('panelPosition', { x: rect.left, y: rect.top })
       .catch((err) => console.warn("YT Speed [" + hostname + "]: savePosition failed", err));
   }
 
-  async function loadPosition(cnt) {
+  async function loadPosition(el) {
     try {
       const settings = await getEffectiveSettings();
       const { x, y } = settings.panelPosition;
       // Bounds check on load
-      const safeX = Math.max(0, Math.min(x, window.innerWidth - 50));
-      const safeY = Math.max(0, Math.min(y, window.innerHeight - 50));
-      cnt.style.left = safeX + "px";
-      cnt.style.top = safeY + "px";
+      const safeX = Math.max(0, Math.min(x, window.innerWidth - MIN_VIDEO_SIZE));
+      const safeY = Math.max(0, Math.min(y, window.innerHeight - MIN_VIDEO_SIZE));
+      el.style.left = safeX + "px";
+      el.style.top = safeY + "px";
     } catch (err) {
       console.warn("YT Speed [" + hostname + "]: loadPosition failed", err);
     }
@@ -698,6 +810,11 @@
     // Insert at the beginning of right controls
     rightControls.insertBefore(btn, rightControls.firstChild);
 
+    // Update cache with new player text element
+    if (cachedUIElements) {
+      cachedUIElements.playerText = span;
+    }
+
     // Apply disabled state if needed
     if (siteDisabled) {
       btn.classList.add('yt-speed-player-disabled');
@@ -706,14 +823,16 @@
 
   // ============ Video Observer ============
 
-  // Enforce speed with exponential backoff for YouTube's aggressive ratechange
+  /**
+   * Enforce speed with exponential backoff for YouTube's aggressive ratechange
+   * @param {HTMLVideoElement} video
+   * @param {number} attempt - current retry count
+   */
   function enforceSpeed(video, attempt = 0) {
-    const maxAttempts = 5;
-    const delays = [10, 25, 50, 100, 200];
-    if (attempt >= maxAttempts) return;
+    if (attempt >= ENFORCE_MAX_ATTEMPTS) return;
     if (video.playbackRate !== currentSpeed) {
       video.playbackRate = currentSpeed;
-      setTimeout(() => enforceSpeed(video, attempt + 1), delays[attempt]);
+      setTimeout(() => enforceSpeed(video, attempt + 1), ENFORCE_BACKOFF_DELAYS[attempt]);
     }
   }
 
@@ -727,7 +846,11 @@
 
         for (const mutation of mutations) {
           for (const node of mutation.addedNodes) {
-            if (node.nodeName === "VIDEO" || node.querySelector?.("video")) {
+            if (node.nodeName === "VIDEO") {
+              trackVideo(node);
+              hasNewVideo = true;
+            } else if (node.querySelector?.("video")) {
+              node.querySelectorAll("video").forEach(trackVideo);
               hasNewVideo = true;
             }
             if (node.querySelector?.(".ytp-settings-button")) {
@@ -741,28 +864,29 @@
           maybeShowUI();
         }
         if (hasPlayerControls && isYouTube) createPlayerControl();
-      }, 100);
+      }, DEBOUNCE_OBSERVER_MS);
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
 
     // Handle video play events - store reference for cleanup
     playHandler = (e) => {
-      if (siteDisabled) return;
       if (e.target.tagName === "VIDEO") {
-        e.target.playbackRate = currentSpeed;
+        trackVideo(e.target);
+        if (!siteDisabled) {
+          e.target.playbackRate = currentSpeed;
+        }
       }
     };
     document.addEventListener("play", playHandler, true);
 
     // Override YouTube's speed reset attempts with exponential backoff
     ratechangeHandler = (e) => {
-      if (siteDisabled) return;
-      if (
-        e.target.tagName === "VIDEO" &&
-        e.target.playbackRate !== currentSpeed
-      ) {
-        enforceSpeed(e.target, 0);
+      if (e.target.tagName === "VIDEO") {
+        trackVideo(e.target);
+        if (!siteDisabled && e.target.playbackRate !== currentSpeed) {
+          enforceSpeed(e.target, 0);
+        }
       }
     };
     document.addEventListener("ratechange", ratechangeHandler, true);
@@ -791,6 +915,38 @@
       clearTimeout(observerDebounceTimer);
       observerDebounceTimer = null;
     }
+    // Clean up document-level listeners
+    if (docClickHandler1) {
+      document.removeEventListener("click", docClickHandler1);
+      docClickHandler1 = null;
+    }
+    if (docClickHandler2) {
+      document.removeEventListener("click", docClickHandler2);
+      docClickHandler2 = null;
+    }
+    if (docMousemoveHandler) {
+      document.removeEventListener("mousemove", docMousemoveHandler);
+      docMousemoveHandler = null;
+    }
+    if (docMouseupHandler) {
+      document.removeEventListener("mouseup", docMouseupHandler);
+      docMouseupHandler = null;
+    }
+    if (docTouchmoveHandler) {
+      document.removeEventListener("touchmove", docTouchmoveHandler);
+      docTouchmoveHandler = null;
+    }
+    if (docTouchendHandler) {
+      document.removeEventListener("touchend", docTouchendHandler);
+      docTouchendHandler = null;
+    }
+    if (winResizeHandler) {
+      window.removeEventListener("resize", winResizeHandler);
+      winResizeHandler = null;
+    }
+    // Clear tracked videos
+    trackedVideos.clear();
+    cachedUIElements = null;
   }
 
   // ============ Message Listener ============
@@ -849,30 +1005,34 @@
   // ============ Initialization ============
 
   async function init() {
-    if (!document.body) {
-      setTimeout(init, 100);
-      return;
+    try {
+      if (!document.body) {
+        setTimeout(init, INIT_RETRY_MS);
+        return;
+      }
+
+      scanForVideos(); // Initial scan for existing videos
+      await loadSettings();
+      await maybeShowUI(); // Only creates UI if video exists and not hidden
+      observeVideos();
+
+      // Initial setup with retries
+      const setup = () => {
+        applySpeedToAllVideos();
+        maybeShowUI(); // Re-check for videos
+        if (isYouTube) createPlayerControl();
+      };
+
+      setup();
+      SETUP_RETRY_DELAYS.forEach(delay => setTimeout(setup, delay));
+
+      // Cleanup on unload
+      window.addEventListener('unload', cleanup);
+
+      console.log("YouTube Speed Control loaded");
+    } catch (err) {
+      console.warn("YT Speed [" + hostname + "]: init failed", err);
     }
-
-    await loadSettings();
-    await maybeShowUI(); // Only creates UI if video exists and not hidden
-    observeVideos();
-
-    // Initial setup with retries
-    const setup = () => {
-      applySpeedToAllVideos();
-      maybeShowUI(); // Re-check for videos
-      if (isYouTube) createPlayerControl();
-    };
-
-    setup();
-    setTimeout(setup, 1000);
-    setTimeout(setup, 3000);
-
-    // Cleanup on unload
-    window.addEventListener('unload', cleanup);
-
-    console.log("YouTube Speed Control loaded");
   }
 
   if (document.readyState === "loading") {
